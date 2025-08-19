@@ -262,7 +262,7 @@ void Window::draw(Offset offset, const std::vector<RenderInfo> &list) {
         assert(glGetError() == GL_NO_ERROR);
         program_->use(view);
         program_->set(texture->id());
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         assert(glGetError() == GL_NO_ERROR);
     }

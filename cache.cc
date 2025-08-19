@@ -146,27 +146,27 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
                             case Method::Base:
                             case Method::Add:
                             case Method::Overlay:
-                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
                                 break;
                             case Method::OverlayFast:
-                                glBlendFunc(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
                                 break;
                             case Method::OverlayMultiply:
                                 // FIXME
-                                glBlendFunc(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
                                 break;
                             case Method::Replace:
-                                glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA, GL_ONE);
                                 break;
                             case Method::Interpolate:
-                                glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
                                 break;
                             case Method::Reduce:
                                 // FIXME
-                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
                                 break;
                             default:
-                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
                                 break;
                         }
                     }, info);
