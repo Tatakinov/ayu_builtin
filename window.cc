@@ -31,8 +31,8 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    //glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
+    //assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
