@@ -75,7 +75,6 @@ namespace {
         {"replace", Method::Replace},
         {"interpolate", Method::Interpolate},
         {"asis", Method::Asis},
-        {"move", Method::Move},
         {"bind", Method::Bind},
         {"add", Method::Add},
         {"reduce", Method::Reduce},

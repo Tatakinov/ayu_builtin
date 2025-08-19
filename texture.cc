@@ -83,6 +83,11 @@ Texture::Texture(const Element &e) : valid_(true) {
                 }
             }
             else {
+                // 透過部分はrgb = (0, 0, 0)でないと
+                // アルファブレンド時に悪さをする
+                p[4 * (y * info.width() + x) + 0] = 0;
+                p[4 * (y * info.width() + x) + 1] = 0;
+                p[4 * (y * info.width() + x) + 2] = 0;
                 if (begin != -1) {
                     region_.push_back({r_.x + begin, r_.y + y, x - begin, 1});
                     begin = -1;

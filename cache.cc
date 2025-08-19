@@ -141,7 +141,6 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
                     glViewport(offset.x + x, offset.y + y, w, h);
                     assert(glGetError() == GL_NO_ERROR);
                     program->set(t->id());
-#if 1
                     std::visit([](const auto &e) {
                         switch (e.method) {
                             case Method::Base:
@@ -149,12 +148,28 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
                             case Method::Overlay:
                                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                                 break;
+                            case Method::OverlayFast:
+                                glBlendFunc(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                break;
+                            case Method::OverlayMultiply:
+                                // FIXME
+                                glBlendFunc(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                break;
+                            case Method::Replace:
+                                glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+                                break;
+                            case Method::Interpolate:
+                                glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                break;
+                            case Method::Reduce:
+                                // FIXME
+                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                break;
                             default:
                                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                                 break;
                         }
                     }, info);
-#endif
                     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
                     assert(glGetError() == GL_NO_ERROR);
                     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);

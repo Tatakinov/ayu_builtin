@@ -43,7 +43,6 @@ namespace {
         Method::Replace,
         Method::Interpolate,
         Method::Asis,
-        Method::Move,
         Method::Bind,
         Method::Add,
         Method::Reduce,
@@ -130,6 +129,9 @@ void Actor::update(int elapsed, std::unordered_set<int> done) {
         else {
             auto &p = anim_.pattern[index_];
             switch (p.method) {
+                case Method::Move:
+                    // TODO stub
+                    break;
                 case Method::Insert:
                     // TODO stub
                     break;
