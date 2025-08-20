@@ -25,9 +25,10 @@ void Character::destroy(GLFWmonitor *monitor) {
 }
 
 void Character::draw() {
+    bool use_self_alpha = (parent_->getInfo("seriko.use_self_alpha", false) == "1");
     auto list = seriko_->get(id_);
     for (auto &[_, v] : windows_) {
-        v->draw({rect_.x, rect_.y}, list);
+        v->draw({rect_.x, rect_.y}, list, use_self_alpha);
     }
     for (auto &[_, v] : windows_) {
         v->swapBuffers();

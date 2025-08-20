@@ -114,7 +114,7 @@ class Window {
             return !glfwWindowShouldClose(window_);
         }
 
-        void draw(Offset offset, const std::vector<RenderInfo> &list);
+        void draw(Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha);
         void swapBuffers();
 
         void setPosition(int x, int y) {

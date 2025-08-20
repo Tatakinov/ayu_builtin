@@ -22,8 +22,7 @@
 #include "program.h"
 #include "vertex.h"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     Ayu ayu;
 
 #if defined(DEBUG)

@@ -38,14 +38,14 @@ class FrameBuffer {
         }
 };
 
-std::unique_ptr<Texture> &Cache::get(const Element &e) {
+std::unique_ptr<Texture> &Cache::get(const Element &e, const bool use_self_alpha) {
     if (!elements_.contains(e)) {
-        elements_.emplace(e, std::make_unique<Texture>(e));
+        elements_.emplace(e, std::make_unique<Texture>(e, use_self_alpha));
     }
     return elements_.at(e);
 }
 
-std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program) {
+std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha) {
     auto k = key;
     if (!cache_.contains(key)) {
         Rect r = {inf, inf, 0, 0};
@@ -53,7 +53,7 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
         for (auto &info : key) {
             if (std::holds_alternative<Element>(info)) {
                 auto &e = std::get<Element>(info);
-                auto &t = get(e);
+                auto &t = get(e, use_self_alpha);
                 if (*t) {
                     auto [x, y, w, h] = t->rect();
                     r.x = std::min(r.x, x);
@@ -68,7 +68,7 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
             else if (std::holds_alternative<ElementWithChildren>(info)) {
                 auto &e = std::get<ElementWithChildren>(info);
                 if (e.children.size() > 0) {
-                    auto &t = get(e.children, program);
+                    auto &t = get(e.children, program, use_self_alpha);
                     if (*t) {
                         auto [x, y, w, h] = t->rect();
                         r.x = std::min(r.x, x);
@@ -123,7 +123,7 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
             fb.bind();
             program->use(view);
             for (auto &info : key) {
-                std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(std::get<Element>(info))) : (get(std::get<ElementWithChildren>(info).children, program));
+                std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(std::get<Element>(info), use_self_alpha)) : (get(std::get<ElementWithChildren>(info).children, program, use_self_alpha));
                 if (*t) {
                     auto [x, y, w, h] = t->rect();
                     // patternの場合のoffsetを考慮。

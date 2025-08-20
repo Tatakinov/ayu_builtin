@@ -37,7 +37,7 @@ class Texture {
     public:
         Texture() : valid_(false) {}
         Texture(Rect r, const std::vector<Rect> &region);
-        Texture(const Element &e);
+        Texture(const Element &e, const bool use_self_alpha);
         GLuint id() const {
             assert(valid_);
             return id_;

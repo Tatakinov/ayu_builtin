@@ -227,10 +227,10 @@ void dump(const std::vector<RenderInfo> &infos) {
     }
 }
 
-void Window::draw(Offset offset, const std::vector<RenderInfo> &list) {
+void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
     glfwMakeContextCurrent(window_);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    std::unique_ptr<Texture> &texture = cache_->get(list, program_);
+    std::unique_ptr<Texture> &texture = cache_->get(list, program_, use_self_alpha);
     glClearColor(0.0, 0.0, 0.0, 0.0);
     assert(glGetError() == GL_NO_ERROR);
     glClear(GL_COLOR_BUFFER_BIT);

@@ -19,8 +19,8 @@ class Cache {
         ~Cache() {
             cache_.clear();
         }
-        std::unique_ptr<Texture> &get(const Element &e);
-        std::unique_ptr<Texture> &get(const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program);
+        std::unique_ptr<Texture> &get(const Element &e, const bool use_self_alpha);
+        std::unique_ptr<Texture> &get(const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha);
 };
 
 #endif // CACHE_H_

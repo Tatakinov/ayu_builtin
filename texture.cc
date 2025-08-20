@@ -31,7 +31,7 @@ Texture::Texture(Rect r, const std::vector<Rect> &region) : r_(r), valid_(true),
     assert(glGetError() == GL_NO_ERROR);
 }
 
-Texture::Texture(const Element &e) : valid_(true) {
+Texture::Texture(const Element &e, const bool use_self_alpha) : valid_(true) {
     Logger::log("filename: ", e.filename.string());
     ImageInfo info(e.filename.string());
     if (info.get() == nullptr) {
@@ -43,7 +43,11 @@ Texture::Texture(const Element &e) : valid_(true) {
     auto pna_filename = dir / e.filename.stem();
     pna_filename += ".pna";
     ImageInfo pna(pna_filename.string());
-    if (pna.get() != nullptr && info.width() == pna.width() && info.height() == pna.height()) {
+    if (use_self_alpha) {
+        // nop
+        Logger::log("use self alpha");
+    }
+    else if (pna.get() != nullptr && info.width() == pna.width() && info.height() == pna.height()) {
         Logger::log("use pna file");
         unsigned char *dest = info.get();
         unsigned char *src = pna.get();
