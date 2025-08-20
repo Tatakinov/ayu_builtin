@@ -18,9 +18,9 @@ void Seriko::update(bool change) {
         push(k, elapsed);
     }
     while (!process_.empty()) {
-        auto [a, t] = process_.top();
+        auto [k, t] = process_.top();
         process_.pop();
-        a->update(t);
+        actors_.at(k).update(t);
     }
     prev_time_ = now;
 }
@@ -33,7 +33,7 @@ void Seriko::push(int id, int elapsed) {
     if (!actor.active()) {
         return;
     }
-    process_.push({&actor, elapsed});
+    process_.push({id, elapsed});
 }
 
 bool Seriko::active(int id) {
@@ -63,9 +63,6 @@ void Seriko::inactivate(int id) {
         return;
     }
     auto &actor = actors_.at(id);
-    if (!actor.active()) {
-        return;
-    }
     actor.inactivate();
 }
 

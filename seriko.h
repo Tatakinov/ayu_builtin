@@ -14,7 +14,7 @@
 class Actor;
 
 struct ActorWithPriority {
-    Actor *actor;
+    int id;
     int remain;
 };
 
