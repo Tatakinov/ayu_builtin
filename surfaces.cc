@@ -309,10 +309,6 @@ void Surfaces::parse(const std::filesystem::path &path) {
                         }
                         int n;
                         util::to_x(tmp.substr(7), n);
-                        if (surface->animation[id].pattern.size() < n) {
-                            Logger::log("Error(", line_count, "): invalid pattern id");
-                            continue;
-                        }
                         Pattern p;
                         std::getline(l, tmp, ',');
                         if (surface->animation[id].interval.size() == 1 && surface->animation[id].interval.contains(Interval::Bind) && !s2method_synthesize.contains(tmp)) {
@@ -344,6 +340,9 @@ void Surfaces::parse(const std::filesystem::path &path) {
                             std::getline(l, tmp, ',');
                             util::to_x(tmp, p.y);
                         }
+                        else if (p.method == Method::Move) {
+                            // TODO stub
+                        }
                         else if (p.method == Method::Insert ||
                                 p.method == Method::Start ||
                                 p.method == Method::Stop) {
@@ -351,6 +350,7 @@ void Surfaces::parse(const std::filesystem::path &path) {
                             std::getline(l, tmp, ',');
                             util::to_x(tmp, id);
                             p.ids.push_back(id);
+                            p.wait_min = p.wait_max = 0;
                         }
                         else if (p.method == Method::AlternativeStart ||
                                 p.method == Method::AlternativeStop ||
@@ -373,6 +373,7 @@ void Surfaces::parse(const std::filesystem::path &path) {
                                 // TODO error
                                 continue;
                             }
+                            p.wait_min = p.wait_max = 0;
                         }
                         else {
                             // unreachable
@@ -382,6 +383,9 @@ void Surfaces::parse(const std::filesystem::path &path) {
                             surface->animation[id].pattern[n] = p;
                         }
                         else {
+                            while (surface->animation[id].pattern.size() < n) {
+                                surface->animation[id].pattern.push_back({Method::Overlay, -1, 0, 0, 0, 0, {}});
+                            }
                             surface->animation[id].pattern.push_back(p);
                         }
                     }
