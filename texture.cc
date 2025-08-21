@@ -19,7 +19,7 @@ ImageInfo::~ImageInfo() {
 Texture::Texture(Rect r, const std::vector<Rect> &region) : r_(r), valid_(true), region_(region) {
     glGenTextures(1, &id_);
     assert(glGetError() == GL_NO_ERROR);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     assert(glGetError() == GL_NO_ERROR);
     glBindTexture(GL_TEXTURE_2D, id_);
     assert(glGetError() == GL_NO_ERROR);
@@ -104,7 +104,7 @@ Texture::Texture(const Element &e, const bool use_self_alpha) : valid_(true) {
     }
     glGenTextures(1, &id_);
     assert(glGetError() == GL_NO_ERROR);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     assert(glGetError() == GL_NO_ERROR);
     glBindTexture(GL_TEXTURE_2D, id_);
     assert(glGetError() == GL_NO_ERROR);
