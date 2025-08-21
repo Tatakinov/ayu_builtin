@@ -122,6 +122,10 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
             assert(glGetError() == GL_NO_ERROR);
             fb.bind();
             program->use(view);
+            glClearColor(0.0, 0.0, 0.0, 0.0);
+            assert(glGetError() == GL_NO_ERROR);
+            glClear(GL_COLOR_BUFFER_BIT);
+            assert(glGetError() == GL_NO_ERROR);
             for (auto &info : key) {
                 std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(std::get<Element>(info), use_self_alpha)) : (get(std::get<ElementWithChildren>(info).children, program, use_self_alpha));
                 if (*t) {
@@ -146,27 +150,27 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
                             case Method::Base:
                             case Method::Add:
                             case Method::Overlay:
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                             case Method::OverlayFast:
-                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                             case Method::OverlayMultiply:
                                 // FIXME
-                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                             case Method::Replace:
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ZERO, GL_ONE, GL_ONE);
                                 break;
                             case Method::Interpolate:
-                                glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                             case Method::Reduce:
                                 // FIXME
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                             default:
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
+                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                         }
                     }, info);
