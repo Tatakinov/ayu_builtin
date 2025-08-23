@@ -104,11 +104,7 @@ class Window {
 
     public:
         Window(Character *parent, GLFWmonitor *monitor);
-        virtual ~Window() {
-            if (window_ != nullptr) {
-                glfwDestroyWindow(window_);
-            }
-        }
+        virtual ~Window();
 
         operator bool() {
             return !glfwWindowShouldClose(window_);

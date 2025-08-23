@@ -117,6 +117,19 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     resizeCallback(window_, mode->width, mode->height);
 }
 
+Window::~Window() {
+    if (window_ != nullptr) {
+        glfwMakeContextCurrent(window_);
+        assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+        cache_.reset();
+        program_.reset();
+        glfwMakeContextCurrent(nullptr);
+        assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+        glfwDestroyWindow(window_);
+        assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    }
+}
+
 void Window::resize(int width, int height) {
     int w, h;
     glfwGetFramebufferSize(window_, &w, &h);
