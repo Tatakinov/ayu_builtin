@@ -13,6 +13,17 @@
 #include <GLFW/glfw3native.h>
 #endif // USE_WAYLAND
 
+#if defined(_WIN32) || defined(WIN32)
+#include <fcntl.h>
+#include <io.h>
+#include <ws2tcpip.h>
+#include <afunix.h>
+#else
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif // WIN32
+
 #include "ayu.h"
 #include "logger.h"
 #include "sstp.h"
@@ -25,6 +36,11 @@ namespace {
     void errorCallback(int code, const char *message) {
         Logger::log("Error(", code, "): ", message);
     }
+#if !defined(_WIN32) && !defined(WIN32)
+    inline int closesocket(int fd) {
+        return close(fd);
+    }
+#endif
 #if defined(USE_WAYLAND)
     wl_compositor *compositor = nullptr;
     zxdg_output_manager_v1 *manager = nullptr;
@@ -46,9 +62,19 @@ Ayu::~Ayu() {
     th_recv_->join();
     characters.clear();
     glfwTerminate();
+#if defined(_WIN32) || defined(WIN32)
+    WSACleanup();
+#endif // Windows
 }
 
 bool Ayu::init() {
+#if defined(_WIN32) || defined(WIN32)
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+    _setmode(_fileno(stdin), _O_BINARY);
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif // Windows
+
     glfwSetErrorCallback(errorCallback);
     assert(glfwInit() != GLFW_FALSE);
 
@@ -477,20 +503,20 @@ std::string Ayu::sendDirectSSTP(std::string method, std::string command, std::ve
         return res;
     }
     std::string request = req;
-    if (write(soc, request.c_str(), request.size()) != request.size()) {
-        close(soc);
+    if (send(soc, request.c_str(), request.size(), 0) != request.size()) {
+        closesocket(soc);
         return res;
     }
     char buffer[BUFFER_SIZE] = {};
     std::string data;
     while (true) {
-        int ret = read(soc, buffer, BUFFER_SIZE);
+        int ret = recv(soc, buffer, BUFFER_SIZE, 0);
         if (ret == -1) {
-            close(soc);
+            closesocket(soc);
             return res;
         }
         if (ret == 0) {
-            close(soc);
+            closesocket(soc);
             break;
         }
         data.append(buffer, ret);

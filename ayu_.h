@@ -14,10 +14,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-
 #if defined(USE_WAYLAND)
 #include <wayland-client.h>
 #include "xdg-output-client-protocol.h"
