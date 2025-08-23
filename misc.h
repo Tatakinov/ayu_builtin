@@ -7,6 +7,10 @@ enum class From {
     System, Seriko, User, YenE, Talk,
 };
 
+enum class CursorType {
+    Default, Hand,
+};
+
 enum class Method {
     Base, Overlay, OverlayFast, OverlayMultiply, Replace,
     Interpolate, Asis, Move, Bind, Add, Reduce, Insert,

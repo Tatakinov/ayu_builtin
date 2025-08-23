@@ -407,6 +407,25 @@ Offset Ayu::getBalloonOffset(int side) {
     return characters_.at(side)->getBalloonOffset();
 }
 
+GLFWcursor *Ayu::getCursor(CursorType type) {
+    if (!cursors_.contains(type)) {
+        switch (type) {
+            case CursorType::Default:
+                cursors_.emplace(type, glfwCreateStandardCursor(GLFW_ARROW_CURSOR));
+                assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+                break;
+            case CursorType::Hand:
+                cursors_.emplace(type, glfwCreateStandardCursor(GLFW_HAND_CURSOR));
+                assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+                break;
+            default:
+                assert(false);
+                break;
+        }
+    }
+    return cursors_.at(type);
+}
+
 std::string Ayu::sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args) {
     sstp::Request req {method};
     sstp::Response res {500, "Internal Server Error"};

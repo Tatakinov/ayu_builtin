@@ -170,7 +170,7 @@ void Window::mouseButton(int button, int action, int mods) {
             b = 2;
         }
 
-        auto name = parent_->getHitBoxName(x + monitor_rect_.x, y +monitor_rect_.y);
+        auto name = parent_->getHitBoxName(x + monitor_rect_.x, y + monitor_rect_.y);
 
         std::vector<std::string> args;
         args = {util::to_s(x), util::to_s(y), util::to_s(0), util::to_s(parent_->side()), name, util::to_s(b)};
@@ -212,6 +212,15 @@ void Window::mouseButton(int button, int action, int mods) {
 }
 
 void Window::cursorPosition(double x, double y) {
+    if (!parent_->drag().has_value()) {
+        auto name = parent_->getHitBoxName(x + monitor_rect_.x, y + monitor_rect_.y);
+        if (name.empty()) {
+            parent_->setCursor(CursorType::Default);
+        }
+        else {
+            parent_->setCursor(CursorType::Hand);
+        }
+    }
     if (!parent_->drag().has_value() && mouse_state_[GLFW_MOUSE_BUTTON_LEFT].press) {
         parent_->setDrag(cursor_position_.x + monitor_rect_.x, cursor_position_.y + monitor_rect_.y);
     }
@@ -342,4 +351,9 @@ double Window::distance(int x, int y) const {
         d = std::min(d, sqrt(dx * dx + dy * dy));
     }
     return d;
+}
+
+void Window::setCursor(GLFWcursor *cursor) {
+    glfwSetCursor(window_, cursor);
+    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 }

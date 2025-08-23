@@ -32,6 +32,7 @@ class Character {
         int id_;
         bool once_;
         bool reset_balloon_position_;
+        CursorType current_cursor_type_;
         std::mutex mutex_;
     public:
         Character(Ayu *parent, int side, const std::string &name, std::unique_ptr<Seriko> seriko);
@@ -90,6 +91,7 @@ class Character {
         void bind(int id, bool enable);
         bool isBinding(int id);
         std::string getHitBoxName(int x, int y);
+        void setCursor(CursorType type);
 #if defined(USE_WAYLAND)
         wl_compositor *getCompositor();
         zxdg_output_manager_v1 *getManager();

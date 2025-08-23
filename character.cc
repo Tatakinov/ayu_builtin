@@ -7,7 +7,7 @@ Character::Character(Ayu *parent, int side, const std::string &name, std::unique
     seriko_(std::move(seriko)),
     rect_({0, 0, 0, 0}), balloon_offset_({0, 0}),
     balloon_direction_(false), id_(-1), once_(true),
-    reset_balloon_position_(false) {
+    reset_balloon_position_(false), current_cursor_type_(CursorType::Default) {
     seriko_->setParent(this);
 }
 
@@ -305,6 +305,16 @@ std::string Character::getHitBoxName(int x, int y) {
         }
     }
     return "";
+}
+
+void Character::setCursor(CursorType type) {
+    if (current_cursor_type_ != type) {
+        current_cursor_type_ = type;
+        auto cursor = parent_->getCursor(type);
+        for (auto &[_, window] : windows_) {
+            window->setCursor(cursor);
+        }
+    }
 }
 
 #if defined(USE_WAYLAND)

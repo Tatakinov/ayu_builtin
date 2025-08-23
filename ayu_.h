@@ -44,6 +44,7 @@ class Ayu {
         std::filesystem::path ayu_dir_;
         std::unordered_map<std::string, std::string> info_;
         std::unique_ptr<Surfaces> surfaces_;
+        std::unordered_map<CursorType, GLFWcursor *> cursors_;
 #if !defined(_WIN32) && !defined(WIN32)
         std::string path_;
         std::string uuid_;
@@ -97,6 +98,8 @@ class Ayu {
         }
 
         void draw();
+
+        GLFWcursor *getCursor(CursorType type);
 
         std::string sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args);
 

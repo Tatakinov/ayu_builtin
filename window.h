@@ -148,6 +148,8 @@ class Window {
 
         double distance(int x, int y) const;
 
+        void setCursor(GLFWcursor *cursor);
+
 #if defined(USE_WAYLAND)
         void increment() {
             counter_++;
