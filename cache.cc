@@ -157,7 +157,7 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
                                 break;
                             case Method::OverlayMultiply:
                                 // FIXME
-                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                                glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE);
                                 break;
                             case Method::Replace:
                                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ZERO, GL_ONE, GL_ONE);
@@ -167,7 +167,7 @@ std::unique_ptr<Texture> &Cache::get(const std::vector<RenderInfo> &key, const s
                                 break;
                             case Method::Reduce:
                                 // FIXME
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                                glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_ONE);
                                 break;
                             default:
                                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
