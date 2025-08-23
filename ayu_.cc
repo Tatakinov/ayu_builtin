@@ -20,6 +20,8 @@
 #include "window.h"
 
 namespace {
+    std::unordered_map<int, std::unique_ptr<Character>> characters;
+
     void errorCallback(int code, const char *message) {
         Logger::log("Error(", code, "): ", message);
     }
@@ -42,12 +44,26 @@ Ayu::~Ayu() {
 #endif // USE_WAYLAND
     th_send_->join();
     th_recv_->join();
+    characters.clear();
     glfwTerminate();
 }
 
 bool Ayu::init() {
     glfwSetErrorCallback(errorCallback);
     assert(glfwInit() != GLFW_FALSE);
+
+    glfwSetMonitorCallback([](auto *monitor, int event) {
+        if (event == GLFW_CONNECTED) {
+            for (auto &[_, v] : characters) {
+                v->create(monitor);
+            }
+        }
+        else if (event == GLFW_DISCONNECTED) {
+            for (auto &[_, v] : characters) {
+                v->destroy(monitor);
+            }
+        }
+    });
 
 #if defined(USE_WAYLAND)
     wl_display *display = glfwGetWaylandDisplay();
@@ -280,54 +296,54 @@ std::string Ayu::getInfo(std::string key, bool fallback) {
 
 
 void Ayu::create(int side) {
-    if (characters_.contains(side)) {
+    if (characters.contains(side)) {
         return;
     }
     auto s = util::side2str(side);
     auto name = getInfo(s + ".name", true);
-    characters_.try_emplace(side, std::make_unique<Character>(this, side, name.c_str(), surfaces_->getSeriko()));
+    characters.try_emplace(side, std::make_unique<Character>(this, side, name.c_str(), surfaces_->getSeriko()));
     // TODO dynamic
     int count = 0;
     auto **monitors = glfwGetMonitors(&count);
     for (int i = 0; i < count; i++) {
-        characters_.at(side)->create(monitors[i]);
+        characters.at(side)->create(monitors[i]);
     }
     return;
 }
 
 void Ayu::show(int side) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return;
     }
-    characters_.at(side)->show();
+    characters.at(side)->show();
 }
 
 void Ayu::hide(int side) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return;
     }
-    characters_.at(side)->hide();
+    characters.at(side)->hide();
 }
 
 void Ayu::setSurface(int side, int id) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return;
     }
-    characters_.at(side)->setSurface(id);
+    characters.at(side)->setSurface(id);
 }
 
 void Ayu::startAnimation(int side, int id) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return;
     }
-    characters_.at(side)->startAnimation(id);
+    characters.at(side)->startAnimation(id);
 }
 
 bool Ayu::isPlayingAnimation(int side, int id) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return false;
     }
-    return characters_.at(side)->isPlayingAnimation(id);
+    return characters.at(side)->isPlayingAnimation(id);
 }
 
 void Ayu::draw() {
@@ -364,47 +380,47 @@ void Ayu::draw() {
         }
     }
     std::vector<int> keys;
-    for (auto &[k, _] : characters_) {
+    for (auto &[k, _] : characters) {
         keys.push_back(k);
     }
     std::sort(keys.begin(), keys.end());
     for (auto k : keys) {
-        characters_[k]->draw();
+        characters[k]->draw();
     }
 }
 
 Rect Ayu::getRect(int side) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return {0, 0, 0, 0};
     }
-    return characters_.at(side)->getRect();
+    return characters.at(side)->getRect();
 }
 
 void Ayu::resetBalloonPosition() {
-    for (auto &[k, v] : characters_) {
+    for (auto &[k, v] : characters) {
         v->resetBalloonPosition();
     }
 }
 
 Offset Ayu::getCharacterOffset(int side) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return {0, 0};
     }
-    return characters_.at(side)->getOffset();
+    return characters.at(side)->getOffset();
 }
 
 void Ayu::setBalloonOffset(int side, int x, int y) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return;
     }
-    return characters_.at(side)->setBalloonOffset(x, y);
+    return characters.at(side)->setBalloonOffset(x, y);
 }
 
 Offset Ayu::getBalloonOffset(int side) {
-    if (!characters_.contains(side)) {
+    if (!characters.contains(side)) {
         return {0, 0};
     }
-    return characters_.at(side)->getBalloonOffset();
+    return characters.at(side)->getBalloonOffset();
 }
 
 GLFWcursor *Ayu::getCursor(CursorType type) {

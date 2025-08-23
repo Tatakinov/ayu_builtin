@@ -36,7 +36,6 @@ class Ayu {
     private:
         std::mutex mutex_;
         std::condition_variable cond_;
-        std::unordered_map<int, std::unique_ptr<Character>> characters_;
         std::queue<std::vector<std::string>> queue_;
         std::queue<std::vector<Request>> event_queue_;
         std::unique_ptr<std::thread> th_recv_;
