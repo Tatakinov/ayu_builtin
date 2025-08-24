@@ -24,7 +24,7 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     : window_(nullptr), size_({0, 0}),
     position_({0, 0}), parent_(parent),
     cache_(std::make_unique<Cache>()), adjust_(false),
-    counter_(0) {
+    counter_(0), offset_({0, 0}) {
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
@@ -296,18 +296,33 @@ void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool
         parent_->setSize(0, 0);
     }
 #if defined(USE_WAYLAND)
-    wl_surface *surface = glfwGetWaylandWindow(window_);
-    wl_compositor *compositor = parent_->getCompositor();
-    wl_region *region = wl_compositor_create_region(compositor);
     if (*texture) {
-        //auto [_x, _y, _w, h] = texture->rect();
-        for (auto &r : texture->region()) {
-            // wl_regionは左上が原点
-            wl_region_add(region, offset.x - monitor_rect_.x + r.x, offset.y - monitor_rect_.y + r.y, r.width, r.height);
+        if (!(region_ == texture->region()) || !(offset_ == offset)) {
+            offset_ = offset;
+            region_ = texture->region();
+            wl_surface *surface = glfwGetWaylandWindow(window_);
+            wl_compositor *compositor = parent_->getCompositor();
+            wl_region *region = wl_compositor_create_region(compositor);
+            //auto [_x, _y, _w, h] = texture->rect();
+            for (auto &r : texture->region()) {
+                // wl_regionは左上が原点
+                wl_region_add(region, offset.x - monitor_rect_.x + r.x, offset.y - monitor_rect_.y + r.y, r.width, r.height);
+            }
+            wl_surface_set_input_region(surface, region);
+            wl_region_destroy(region);
+            Logger::log("update region.");
         }
     }
-    wl_surface_set_input_region(surface, region);
-    wl_region_destroy(region);
+    else {
+        if (region_.size() > 0) {
+            region_.clear();
+        }
+        wl_surface *surface = glfwGetWaylandWindow(window_);
+        wl_compositor *compositor = parent_->getCompositor();
+        wl_region *region = wl_compositor_create_region(compositor);
+        wl_surface_set_input_region(surface, region);
+        wl_region_destroy(region);
+    }
 #endif // USE_WAYLAND
     glfwMakeContextCurrent(nullptr);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);

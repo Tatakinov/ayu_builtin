@@ -39,10 +39,18 @@ struct DragPosition {
 
 struct Offset {
     int x, y;
+    bool operator==(const Offset &rhs) const {
+        const Offset &lhs = *this;
+        return lhs.x == rhs.x && lhs.y == rhs.y;
+    }
 };
 
 struct Rect {
     int x, y, width, height;
+    bool operator==(const Rect &rhs) const {
+        const Rect &lhs = *this;
+        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.width == rhs.width && lhs.height == rhs.height;
+    }
 };
 
 struct Request {

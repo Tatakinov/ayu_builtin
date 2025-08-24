@@ -41,6 +41,8 @@ class Window {
         std::unique_ptr<Cache> cache_;
         bool adjust_;
         int counter_;
+        Offset offset_;
+        std::vector<Rect> region_;
 
         static void resizeCallback(GLFWwindow *window, int width, int height) {
             auto instance = static_cast<Window *>(glfwGetWindowUserPointer(window));
