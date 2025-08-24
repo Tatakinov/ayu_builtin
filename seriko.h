@@ -40,7 +40,9 @@ class Seriko {
         std::priority_queue<ActorWithPriority, std::vector<ActorWithPriority>, Compare> process_;
         Character *parent_;
         std::unordered_map<int, bool> binds_;
+        std::unordered_map<int, std::unordered_set<int>> bind_addids_;
         void update(bool change = false);
+        void updateBind();
     public:
         Seriko(const std::unordered_map<int, Surface> &surfaces) : current_id_(-1), surfaces_(surfaces) {}
         ~Seriko() {}

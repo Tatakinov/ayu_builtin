@@ -198,6 +198,23 @@ bool Character::isBinding(int id) {
     return binding == 1;
 }
 
+std::unordered_set<int> Character::getBindAddId(int id) {
+    std::unordered_set<int> addids;
+    std::string key = util::side2str(side_) + ".bindgroup" + util::to_s(id) + ".addid";
+    std::string value = parent_->getInfo(key, false);
+    if (value.empty()) {
+        return addids;
+    }
+    std::istringstream iss(value);
+    std::string tmp;
+    while (std::getline(iss, tmp, ',')) {
+        int id;
+        util::to_x(tmp, id);
+        addids.emplace(id);
+    }
+    return addids;
+}
+
 std::string Character::getHitBoxName(int x, int y) {
     x -= rect_.x;
     y -= rect_.y;

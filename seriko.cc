@@ -82,6 +82,7 @@ std::vector<RenderInfo> Seriko::get(int id) {
             Actor actor = {k, v, this};
             actors_.emplace(k, actor);
         }
+        updateBind();
         update(true);
     }
     else {
@@ -106,7 +107,7 @@ std::vector<RenderInfo> Seriko::get(int id) {
         auto &actor = actors_.at(i);
         auto interval = actor.interval();
         if (interval.size() == 1 && interval.contains(Interval::Bind)) {
-            if (parent_->isBinding(i)) {
+            if (isBinding(i)) {
                 auto ps = actor.patterns();
                 for (auto &p : ps) {
                     ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, {id}) };
@@ -227,20 +228,44 @@ std::vector<CollisionInfo> Seriko::getCollision(int id) {
 
 
 void Seriko::bind(int id, bool enable) {
-    if (actors_.contains(id)) {
-        binds_[id] = enable;
+    if (!actors_.contains(id)) {
+        return;
+    }
+    binds_[id] = enable;
+    if (enable) {
+        actors_.at(id).activate(From::System);
+    }
+    else {
+        actors_.at(id).inactivate();
+    }
+    auto addids = parent_->getBindAddId(id);
+    for (auto e : addids) {
         if (enable) {
-            actors_.at(id).activate(From::System);
+            bind_addids_[e].emplace(id);
+            bind(e, true);
         }
-        else {
-            actors_.at(id).inactivate();
+        else if (bind_addids_.contains(id)) {
+            bind_addids_.at(e).erase(id);
+            if (bind_addids_.at(e).size() == 0) {
+                bind_addids_.erase(e);
+                bind(e, false);
+            }
         }
     }
 }
 
 bool Seriko::isBinding(int id) {
-    if (!binds_.contains(id)) {
-        binds_[id] = parent_->isBinding(id);
+    if (bind_addids_.contains(id)) {
+        return true;
     }
     return binds_[id];
+}
+
+void Seriko::updateBind() {
+    for (auto &[k, _] : actors_) {
+        if (!binds_.contains(k)) {
+            binds_[k] = parent_->isBinding(k);
+            bind(k, binds_.at(k));
+        }
+    }
 }
