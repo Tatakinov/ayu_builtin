@@ -40,10 +40,8 @@ class Ayu {
         std::unordered_map<std::string, std::string> info_;
         std::unique_ptr<Surfaces> surfaces_;
         std::unordered_map<CursorType, GLFWcursor *> cursors_;
-#if !defined(_WIN32) && !defined(WIN32)
         std::string path_;
         std::string uuid_;
-#endif // WIN32
         bool alive_;
 
     public:

@@ -84,7 +84,11 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     while (wl_display_dispatch(display) != -1 && counter_ > 0) {}
     zxdg_output_v1_destroy(output);
 #endif
-    window_ = glfwCreateWindow(mode->width, mode->height, parent_->name().c_str(), monitor, NULL);
+#if defined(_WIN32) || defined(WIN32)
+    window_ = glfwCreateWindow(monitor_rect_.width, monitor_rect_.height, parent_->name().c_str(), nullptr, nullptr);
+#else
+    window_ = glfwCreateWindow(mode->width, mode->height, parent_->name().c_str(), monitor, nullptr);
+#endif
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 
     glfwMakeContextCurrent(window_);
