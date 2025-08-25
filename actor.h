@@ -27,12 +27,12 @@ class Actor {
             active_ = false;
             pattern_ = {Method::Overlay, -1, 0, 0, 0, 0, {}};
         }
-        Pattern currentPattern() const;
-        void update(int elapsed, std::unordered_set<int> done = {});
-        std::unordered_set<Interval> interval() const {
+        const Pattern &currentPattern() const;
+        void update(int elapsed);
+        const std::unordered_set<Interval> &interval() const {
             return anim_.interval;
         }
-        std::vector<Pattern> patterns() const {
+        const std::vector<Pattern> &patterns() const {
             return anim_.pattern;
         }
 };

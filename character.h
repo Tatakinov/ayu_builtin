@@ -34,6 +34,8 @@ class Character {
         bool reset_balloon_position_;
         CursorType current_cursor_type_;
         std::mutex mutex_;
+        std::optional<std::vector<RenderInfo>> prev_;
+        bool position_changed_;
     public:
         Character(Ayu *parent, int side, const std::string &name, std::unique_ptr<Seriko> seriko);
         ~Character();

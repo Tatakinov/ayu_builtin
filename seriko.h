@@ -54,7 +54,7 @@ class Seriko {
         void activate(From from, int id, int elapsed);
         void inactivate(int id);
         std::vector<RenderInfo> get(int id);
-        std::vector<RenderInfo> getElements(int id, std::unordered_set<int> done);
+        std::vector<RenderInfo> getElements(int id, std::unordered_set<int> &done);
         std::vector<CollisionInfo> getCollision(int id);
         void bind(int id, bool enable);
         bool isBinding(int id);

@@ -48,7 +48,7 @@ class Ayu {
         Ayu() : alive_(true) {
             init();
 #if defined(DEBUG)
-            ayu_dir_ = ".";
+            ayu_dir_ = "./shell/master";
             surfaces_ = std::make_unique<Surfaces>(ayu_dir_);
 #endif // DEBUG
         }

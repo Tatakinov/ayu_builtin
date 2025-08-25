@@ -373,7 +373,8 @@ bool Ayu::isPlayingAnimation(int side, int id) {
 }
 
 void Ayu::draw() {
-    glfwPollEvents();
+    //glfwPollEvents();
+    glfwWaitEventsTimeout(0.001); // 1ms
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     std::queue<std::vector<std::string>> queue;
     {

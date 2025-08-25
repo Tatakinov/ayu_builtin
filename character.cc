@@ -7,7 +7,8 @@ Character::Character(Ayu *parent, int side, const std::string &name, std::unique
     seriko_(std::move(seriko)),
     rect_({0, 0, 0, 0}), balloon_offset_({0, 0}),
     balloon_direction_(false), id_(-1), once_(true),
-    reset_balloon_position_(false), current_cursor_type_(CursorType::Default) {
+    reset_balloon_position_(false), current_cursor_type_(CursorType::Default),
+    position_changed_(false) {
     seriko_->setParent(this);
 }
 
@@ -27,11 +28,15 @@ void Character::destroy(GLFWmonitor *monitor) {
 void Character::draw() {
     bool use_self_alpha = (parent_->getInfo("seriko.use_self_alpha", false) == "1");
     auto list = seriko_->get(id_);
-    for (auto &[_, v] : windows_) {
-        v->draw({rect_.x, rect_.y}, list, use_self_alpha);
-    }
-    for (auto &[_, v] : windows_) {
-        v->swapBuffers();
+    if (!prev_ || !(prev_.value() == list) || position_changed_) {
+        position_changed_ = false;
+        prev_ = list;
+        for (auto &[_, v] : windows_) {
+            v->draw({rect_.x, rect_.y}, list, use_self_alpha);
+        }
+        for (auto &[_, v] : windows_) {
+            v->swapBuffers();
+        }
     }
 }
 
@@ -167,6 +172,7 @@ Offset Character::getCharacterOffset(int side) {
 
 void Character::setOffset(int x, int y) {
     if (x != rect_.x || y != rect_.y) {
+        position_changed_ = true;
         std::unique_lock<std::mutex> lock(mutex_);
         rect_.x = x;
         rect_.y = y;

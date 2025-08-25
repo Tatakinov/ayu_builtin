@@ -90,47 +90,53 @@ std::vector<RenderInfo> Seriko::get(int id) {
     }
     auto &surface = surfaces_.at(id);
     std::vector<int> list;
+    list.reserve(std::max(surface.element.size(), actors_.size()));
+    ret.reserve(surface.element.size());
     // TODO background
     for (auto &[k, _] : surface.element) {
-        list.push_back(k);
+        list.emplace_back(k);
     }
     std::sort(list.begin(), list.end());
     for (auto i : list) {
-        ret.push_back(surface.element[i]);
+        ret.emplace_back(surface.element[i]);
     }
     list.clear();
-    for (auto &[k, _] : actors_) {
-        list.push_back(k);
+    int allocate = ret.size();
+    for (auto &[k, v] : actors_) {
+        list.emplace_back(k);
+        allocate += v.patterns().size();
     }
+    ret.reserve(allocate);
     std::sort(list.begin(), list.end());
+    std::unordered_set<int> done = {id};
     for (auto i : list) {
         auto &actor = actors_.at(i);
-        auto interval = actor.interval();
+        auto &interval = actor.interval();
         if (interval.size() == 1 && interval.contains(Interval::Bind)) {
             if (isBinding(i)) {
                 auto ps = actor.patterns();
                 for (auto &p : ps) {
-                    ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, {id}) };
-                    ret.push_back(e);
+                    ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, done) };
+                    ret.emplace_back(e);
                 }
             }
         }
 #if 0
         else if (actor.active()) {
             auto p = actor.currentPattern();
-            ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, {id}) };
-            ret.push_back(e);
+            ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, done) };
+            ret.emplace_back(e);
         }
 #else
         auto p = actor.currentPattern();
-        ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, {id}) };
-        ret.push_back(e);
+        ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, done) };
+        ret.emplace_back(e);
 #endif
     }
     return ret;
 }
 
-std::vector<RenderInfo> Seriko::getElements(int id, std::unordered_set<int> done) {
+std::vector<RenderInfo> Seriko::getElements(int id, std::unordered_set<int> &done) {
     if (!surfaces_.contains(id)) {
         return {};
     }
@@ -147,13 +153,13 @@ std::vector<RenderInfo> Seriko::getElements(int id, std::unordered_set<int> done
     }
     std::sort(list.begin(), list.end());
     for (auto i : list) {
-        auto interval = surface.animation[i].interval;
+        auto &interval = surface.animation[i].interval;
         if (interval.size() == 1 && interval.contains(Interval::Bind)) {
             auto ps = surface.animation[i].pattern;
             for (auto &p : ps) {
                 if (!done.contains(p.id)) {
                     ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, done) };
-                    ret.push_back(e);
+                    ret.emplace_back(e);
                 }
             }
         }

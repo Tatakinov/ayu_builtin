@@ -109,11 +109,11 @@ void Actor::activate(From from) {
     wait_ = wait(p.wait_min, p.wait_max);
 }
 
-Pattern Actor::currentPattern() const {
+const Pattern &Actor::currentPattern() const {
     return pattern_;
 }
 
-void Actor::update(int elapsed, std::unordered_set<int> done) {
+void Actor::update(int elapsed) {
     if (!active_) {
         return;
     }
