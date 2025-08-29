@@ -2,6 +2,12 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#if defined(_WIN32) || defined(WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_NATIVE_INCLUDE_NONE
+#include <GLFW/glfw3native.h>
+#endif // Windows
+
 #if defined(USE_WAYLAND)
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 #define GLFW_NATIVE_INCLUDE_NONE
@@ -295,9 +301,40 @@ void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool
     else {
         parent_->setSize(0, 0);
     }
+#if defined(_WIN32) || defined(WIN32)
+    if (*texture) {
+        if (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset)) {
+            HWND window = glfwGetWin32Window(window_);
+            offset_ = offset;
+            region_ = texture->region();
+            std::vector<POINT> points;
+            std::vector<int> counts;
+            int num = 0;
+            for (auto &r : region_.value()) {
+                // 矩形内部が有効な領域になるので矩形を1まわり大きくする
+                points.push_back({r.x - 1, r.y - 1});
+                points.push_back({r.x - 1, r.y + r.height + 1});
+                points.push_back({r.x + r.width + 1, r.y + r.height + 1});
+                points.push_back({r.x + r.width + 1, r.y - 1});
+                counts.push_back(4);
+                num += 4;
+            }
+            HRGN region = CreatePolyPolygonRgn(&points[0], &counts[0], num, WINDING);
+            SetWindowRgn(window, region, TRUE);
+        }
+    }
+    else {
+        if (!region_ || region_.value().size() > 0) {
+            region_ = std::make_optional<std::vector<Rect>>();
+            HWND window = glfwGetWin32Window(window_);
+            HRGN region = CreateRectRgn(0, 0, 1, 1);
+            SetWindowRgn(window, region, TRUE);
+        }
+    }
+#endif // Windows
 #if defined(USE_WAYLAND)
     if (*texture) {
-        if (!(region_ == texture->region()) || !(offset_ == offset)) {
+        if (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset)) {
             offset_ = offset;
             region_ = texture->region();
             wl_surface *surface = glfwGetWaylandWindow(window_);
@@ -314,14 +351,14 @@ void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool
         }
     }
     else {
-        if (region_.size() > 0) {
-            region_.clear();
+        if (!region_ || region_.value().size() > 0) {
+            region_ = std::make_optional<std::vector<Rect>>();
+            wl_surface *surface = glfwGetWaylandWindow(window_);
+            wl_compositor *compositor = parent_->getCompositor();
+            wl_region *region = wl_compositor_create_region(compositor);
+            wl_surface_set_input_region(surface, region);
+            wl_region_destroy(region);
         }
-        wl_surface *surface = glfwGetWaylandWindow(window_);
-        wl_compositor *compositor = parent_->getCompositor();
-        wl_region *region = wl_compositor_create_region(compositor);
-        wl_surface_set_input_region(surface, region);
-        wl_region_destroy(region);
     }
 #endif // USE_WAYLAND
     glfwMakeContextCurrent(nullptr);
