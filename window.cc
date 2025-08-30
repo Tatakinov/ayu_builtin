@@ -312,10 +312,12 @@ void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool
             int num = 0;
             for (auto &r : region_.value()) {
                 // 矩形内部が有効な領域になるので矩形を1まわり大きくする
-                points.push_back({r.x - 1, r.y - 1});
-                points.push_back({r.x - 1, r.y + r.height + 1});
-                points.push_back({r.x + r.width + 1, r.y + r.height + 1});
-                points.push_back({r.x + r.width + 1, r.y - 1});
+                int x = offset.x - monitor_rect_.x + r.x;
+                int y = offset.y - monitor_rect_.y + r.y;
+                points.push_back({x - 1, y - 1});
+                points.push_back({x - 1, y + r.height + 1});
+                points.push_back({x + r.width + 1, y + r.height + 1});
+                points.push_back({x + r.width + 1, y - 1});
                 counts.push_back(4);
                 num += 4;
             }
