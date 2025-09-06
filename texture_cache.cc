@@ -146,7 +146,9 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
                     glViewport(offset.x + x, offset.y + y, w, h);
                     assert(glGetError() == GL_NO_ERROR);
                     program->set(t->id());
-                    std::visit([](const auto &e) {
+                    // straight alpha
+                    if (std::holds_alternative<Element>(info)) {
+                        auto &e = std::get<Element>(info);
                         switch (e.method) {
                             case Method::Base:
                             case Method::Add:
@@ -174,7 +176,38 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
                                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                         }
-                    }, info);
+                    }
+                    // pre-multiplied alpha
+                    else {
+                        auto &e = std::get<ElementWithChildren>(info);
+                        switch (e.method) {
+                            case Method::Base:
+                            case Method::Add:
+                            case Method::Overlay:
+                                glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                                break;
+                            case Method::OverlayFast:
+                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                                break;
+                            case Method::OverlayMultiply:
+                                // FIXME
+                                glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE);
+                                break;
+                            case Method::Replace:
+                                glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ONE);
+                                break;
+                            case Method::Interpolate:
+                                glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                                break;
+                            case Method::Reduce:
+                                // FIXME
+                                glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_ONE);
+                                break;
+                            default:
+                                glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                                break;
+                        }
+                    }
                     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
                     assert(glGetError() == GL_NO_ERROR);
                     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
