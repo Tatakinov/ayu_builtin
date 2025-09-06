@@ -11,6 +11,7 @@
 #endif // USE_WAYLAND
 
 #include "ayu_.h"
+#include "image_cache.h"
 #include "misc.h"
 #include "seriko.h"
 #include "window.h"
@@ -41,7 +42,7 @@ class Character {
         ~Character();
         void create(GLFWmonitor *monitor);
         void destroy(GLFWmonitor *monitor);
-        void draw();
+        void draw(std::unique_ptr<ImageCache> &cache, bool changed);
         int side() const {
             return side_;
         }
@@ -53,6 +54,7 @@ class Character {
         void setSurface(int id);
         void startAnimation(int id);
         bool isPlayingAnimation(int id);
+        void clearCache();
         Rect getRect() {
             Rect r;
             {

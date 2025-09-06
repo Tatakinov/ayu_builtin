@@ -25,14 +25,14 @@ void Character::destroy(GLFWmonitor *monitor) {
     }
 }
 
-void Character::draw() {
+void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
     bool use_self_alpha = (parent_->getInfo("seriko.use_self_alpha", false) == "1");
     auto list = seriko_->get(id_);
-    if (!prev_ || !(prev_.value() == list) || position_changed_) {
+    if (!prev_ || !(prev_.value() == list) || position_changed_ || changed) {
         position_changed_ = false;
         prev_ = list;
         for (auto &[_, v] : windows_) {
-            v->draw({rect_.x, rect_.y}, list, use_self_alpha);
+            v->draw(cache, {rect_.x, rect_.y}, list, use_self_alpha);
         }
         for (auto &[_, v] : windows_) {
             v->swapBuffers();
@@ -81,6 +81,12 @@ void Character::startAnimation(int id) {
 bool Character::isPlayingAnimation(int id) {
     std::unique_lock<std::mutex> lock(mutex_);
     return seriko_->active(id);
+}
+
+void Character::clearCache() {
+    for (auto &[_, v] : windows_) {
+        v->clearCache();
+    }
 }
 
 void Character::resetBalloonPosition() {

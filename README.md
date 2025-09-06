@@ -60,3 +60,6 @@ AYU_PATH="/path/to/ayu" ninix
 ## LICENSE
 
 基本的にはMIT-0ですが、ソースファイルにライセンスの記述があるものはそちらが優先されます。
+
+また、以下のソースコードを参考にしています。
+[ONNXRuntime-example](https://github.com/microsoft/onnxruntime-inference-examples/blob/main/c_cxx/MNIST/MNIST.cpp) / MIT License (C) Microsoft

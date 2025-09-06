@@ -1,6 +1,7 @@
 #include "ayu_.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -18,6 +19,10 @@
 #include <io.h>
 #include <ws2tcpip.h>
 #include <afunix.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef max
+#undef min
 #else
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -145,7 +150,6 @@ bool Ayu::init() {
                 }
                 std::u8string dir(tmp.begin(), tmp.end());
                 ayu_dir_ = dir;
-                cond_.notify_one();
             }
             else if (event == "Endpoint" && req(0) && req(1)) {
                 {
@@ -153,7 +157,6 @@ bool Ayu::init() {
                     path_ = req(0).value();
                     uuid_ = req(1).value();
                 }
-                cond_.notify_one();
             }
             else if (event == "UpdateInfo" && req(0)) {
                 {
@@ -168,7 +171,9 @@ bool Ayu::init() {
                         }
                         info_[value.substr(0, pos)] = value.substr(pos + 1);
                     }
+                    loaded_ = true;
                 }
+                cond_.notify_one();
             }
             else if (event == "Position" && req(0)) {
                 int side;
@@ -255,16 +260,21 @@ bool Ayu::init() {
 #if !defined(DEBUG)
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        cond_.wait(lock, [this] { return !ayu_dir_.empty(); });
+        cond_.wait(lock, [&] { return loaded_; });
     }
 #endif // DEBUG
 
-#if !defined(DEBUG)
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        cond_.wait(lock, [this] { return !path_.empty(); });
-    }
-#endif // DEBUG
+    std::string exe_path;
+    exe_path.resize(1024);
+#if defined(_WIN32) || defined(WIN32)
+    GetModuleFileName(NULL, exe_path.data(), 1024);
+#else
+    readlink("/proc/self/exe", exe_path.data(), 1024);
+#endif
+    std::filesystem::path exe_dir = exe_path;
+    exe_dir = exe_dir.parent_path();
+    bool use_self_alpha = (getInfo("seriko.use_self_alpha", false) == "1");
+    cache_ = std::make_unique<ImageCache>(exe_dir, use_self_alpha);
 
     th_send_ = std::make_unique<std::thread>([&]() {
         while (true) {
@@ -372,6 +382,13 @@ bool Ayu::isPlayingAnimation(int side, int id) {
     return characters.at(side)->isPlayingAnimation(id);
 }
 
+void Ayu::clearCache() {
+    cache_->clearCache();
+    for (auto &[_, v] : characters) {
+        v->clearCache();
+    }
+}
+
 void Ayu::draw() {
     //glfwPollEvents();
     glfwWaitEventsTimeout(0.001); // 1ms
@@ -384,6 +401,7 @@ void Ayu::draw() {
             queue_.pop();
         }
     }
+    bool changed = false;
     while (!queue.empty()) {
         std::vector<std::string> args = queue.front();
         queue.pop();
@@ -405,6 +423,13 @@ void Ayu::draw() {
             util::to_x(args[2], id);
             setSurface(side, id);
         }
+        else if (args[0] == "Scale") {
+            int scale;
+            util::to_x(args[1], scale);
+            clearCache();
+            cache_->setScale(scale);
+            changed = true;
+        }
     }
     std::vector<int> keys;
     for (auto &[k, _] : characters) {
@@ -412,7 +437,7 @@ void Ayu::draw() {
     }
     std::sort(keys.begin(), keys.end());
     for (auto k : keys) {
-        characters[k]->draw();
+        characters[k]->draw(cache_, changed);
     }
 }
 

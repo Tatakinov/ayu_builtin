@@ -7,26 +7,9 @@
 #include <unordered_map>
 
 #include "glad/glad.h"
+#include "image_cache.h"
 #include "misc.h"
 #include "surface.h"
-
-class ImageInfo {
-    private:
-        unsigned char *p_;
-        int width_, height_, bpp_;
-    public:
-        ImageInfo(std::string filename);
-        ~ImageInfo();
-        unsigned char *get() const {
-            return p_;
-        }
-        int width() const {
-            return width_;
-        }
-        int height() const {
-            return height_;
-        }
-};
 
 class Texture {
     private:
@@ -34,10 +17,14 @@ class Texture {
         Rect r_;
         bool valid_;
         std::vector<Rect> region_;
+        bool is_upconverted_;
     public:
-        Texture() : valid_(false) {}
+        Texture() : valid_(false), is_upconverted_(false) {}
         Texture(Rect r, const std::vector<Rect> &region);
-        Texture(const Element &e, const bool use_self_alpha);
+        Texture(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha);
+        ~Texture() {
+            glDeleteTextures(1, &id_);
+        }
         GLuint id() const {
             assert(valid_);
             return id_;
@@ -52,8 +39,8 @@ class Texture {
         std::vector<Rect> &region() {
             return region_;
         }
-        ~Texture() {
-            glDeleteTextures(1, &id_);
+        void upconverted() {
+            is_upconverted_ = true;
         }
 };
 

@@ -3,6 +3,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #if defined(_WIN32) || defined(WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef max
+#undef min
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_NATIVE_INCLUDE_NONE
 #include <GLFW/glfw3native.h>
@@ -29,7 +33,7 @@ namespace {
 Window::Window(Character *parent, GLFWmonitor *monitor)
     : window_(nullptr), size_({0, 0}),
     position_({0, 0}), parent_(parent),
-    cache_(std::make_unique<Cache>()), adjust_(false),
+    cache_(std::make_unique<TextureCache>()), adjust_(false),
     counter_(0), offset_({0, 0}) {
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
@@ -259,10 +263,10 @@ void dump(const std::vector<RenderInfo> &infos) {
     }
 }
 
-void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
+void Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
     glfwMakeContextCurrent(window_);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    std::unique_ptr<Texture> &texture = cache_->get(list, program_, use_self_alpha);
+    std::unique_ptr<Texture> &texture = cache_->get(image_cache, list, program_, use_self_alpha);
     glClearColor(0.0, 0.0, 0.0, 0.0);
     assert(glGetError() == GL_NO_ERROR);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -319,7 +323,7 @@ void Window::draw(Offset offset, const std::vector<RenderInfo> &list, const bool
                 points.push_back({x + r.width + 1, y + r.height + 1});
                 points.push_back({x + r.width + 1, y - 1});
                 counts.push_back(4);
-                num += 4;
+                num += 1;
             }
             HRGN region = CreatePolyPolygonRgn(&points[0], &counts[0], num, WINDING);
             SetWindowRgn(window, region, TRUE);
@@ -413,5 +417,13 @@ double Window::distance(int x, int y) const {
 
 void Window::setCursor(GLFWcursor *cursor) {
     glfwSetCursor(window_, cursor);
+    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+}
+
+void Window::clearCache() {
+    glfwMakeContextCurrent(window_);
+    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    cache_->clearCache();
+    glfwMakeContextCurrent(nullptr);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 }

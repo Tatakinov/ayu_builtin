@@ -12,13 +12,14 @@
 #include <unordered_map>
 
 #include "ayu_.h"
-#include "cache.h"
+#include "image_cache.h"
 #include "logger.h"
 #include "misc.h"
 #include "program.h"
+#include "texture_cache.h"
 
-class Cache;
 class Character;
+class TextureCache;
 
 class Window {
     struct State {
@@ -38,7 +39,7 @@ class Window {
         Position<double> cursor_position_;
         Character *parent_;
         Rect monitor_rect_;
-        std::unique_ptr<Cache> cache_;
+        std::unique_ptr<TextureCache> cache_;
         bool adjust_;
         int counter_;
         Offset offset_;
@@ -112,7 +113,7 @@ class Window {
             return !glfwWindowShouldClose(window_);
         }
 
-        void draw(Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha);
+        void draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha);
         void swapBuffers();
 
         void setPosition(int x, int y) {
@@ -151,6 +152,8 @@ class Window {
         double distance(int x, int y) const;
 
         void setCursor(GLFWcursor *cursor);
+
+        void clearCache();
 
 #if defined(USE_WAYLAND)
         void increment() {

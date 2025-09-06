@@ -20,6 +20,7 @@
 #endif // USE_WAYLAND
 
 #include "character.h"
+#include "image_cache.h"
 #include "misc.h"
 #include "surfaces.h"
 #include "util.h"
@@ -40,12 +41,15 @@ class Ayu {
         std::unordered_map<std::string, std::string> info_;
         std::unique_ptr<Surfaces> surfaces_;
         std::unordered_map<CursorType, GLFWcursor *> cursors_;
+        std::unique_ptr<ImageCache> cache_;
         std::string path_;
         std::string uuid_;
         bool alive_;
+        int scale_;
+        bool loaded_;
 
     public:
-        Ayu() : alive_(true) {
+        Ayu() : alive_(true), scale_(100), loaded_(false) {
             init();
 #if defined(DEBUG)
             ayu_dir_ = "./shell/master";
@@ -85,6 +89,8 @@ class Ayu {
         void startAnimation(int side, int id);
 
         bool isPlayingAnimation(int side, int id);
+
+        void clearCache();
 
         operator bool() {
             return alive_;
