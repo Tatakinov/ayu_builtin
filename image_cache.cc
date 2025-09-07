@@ -59,9 +59,9 @@ ImageCache::ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha
                         auto &tmp = cache_.at(p);
                         cache_[p] = {tmp->get(), tmp->width(), tmp->height(), true};
                     }
-                    for (int i = 0; i < w * h; i++) {
+                    for (int i = 0; i < (2 * w) * (2 * h); i++) {
                         for (int c = 0; c < 4; c++) {
-                            int byte = std::round(output[c * w * h + i] * 255);
+                            int byte = std::round(output[c * (2 * w) * (2 * h) + i] * 255);
                             dest[4 * i + c] = std::max(0, std::min(255, byte));
                         }
                     }
@@ -82,6 +82,7 @@ ImageCache::ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha
                         cache_[p] = {dest, w, h, true};
                     }
                 }
+                Logger::log("upconverted!");
             }
         });
     }

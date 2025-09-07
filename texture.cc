@@ -4,7 +4,7 @@
 
 #include "logger.h"
 
-Texture::Texture(Rect r, const std::vector<Rect> &region) : r_(r), valid_(true), region_(region) {
+Texture::Texture(Rect r, const std::vector<Rect> &region) : r_(r), valid_(true), region_(region), is_upconverted_(false) {
     glGenTextures(1, &id_);
     assert(glGetError() == GL_NO_ERROR);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -19,7 +19,7 @@ Texture::Texture(Rect r, const std::vector<Rect> &region) : r_(r), valid_(true),
     assert(glGetError() == GL_NO_ERROR);
 }
 
-Texture::Texture(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha) : valid_(true) {
+Texture::Texture(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha) : valid_(true), is_upconverted_(false) {
     Logger::log("filename: ", e.filename.string());
     auto &info = cache->get(e.filename);
     if (!info) {
@@ -67,4 +67,5 @@ Texture::Texture(std::unique_ptr<ImageCache> &cache, const Element &e, const boo
     assert(glGetError() == GL_NO_ERROR);
     glBindTexture(GL_TEXTURE_2D, 0);
     assert(glGetError() == GL_NO_ERROR);
+    is_upconverted_ = info->isUpconverted();
 }

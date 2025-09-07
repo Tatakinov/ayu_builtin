@@ -42,6 +42,9 @@ class Texture {
         void upconverted() {
             is_upconverted_ = true;
         }
+        bool isUpconverted() {
+            return is_upconverted_;
+        }
 };
 
 #endif // TEXTURE_H_

@@ -27,7 +27,7 @@ class ImageInfo {
         int height() const {
             return height_;
         }
-        bool is_upconverted() const {
+        bool isUpconverted() const {
             return is_upconverted_;
         }
 };

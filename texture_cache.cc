@@ -39,22 +39,57 @@ class FrameBuffer {
         }
 };
 
-std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha) {
-    if (!elements_.contains(e)) {
-        elements_.emplace(e, std::make_unique<Texture>(cache, e, use_self_alpha));
+std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha, bool &regenerate) {
+    bool load_required = true;
+    if (elements_.contains(e)) {
+        auto &t = elements_.at(e);
+        auto &info = cache->get(e.filename);
+        Logger::log("texture: ", t->isUpconverted());
+        Logger::log("info   : ", info->isUpconverted());
+        if (t->isUpconverted() == info->isUpconverted()) {
+            load_required = false;
+        }
+        else {
+            regenerate = true;
+        }
     }
+    if (load_required) {
+        elements_[e] = std::make_unique<Texture>(cache, e, use_self_alpha);
+    }
+    Logger::log("return texture: ", elements_.at(e)->isUpconverted());
     return elements_.at(e);
 }
 
-std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha) {
-    auto k = key;
-    if (!cache_.contains(key)) {
+std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha, bool &regenerate) {
+    bool generate_required = true;
+    if (cache_.contains(key)) {
+        auto &t = cache_.at(key);
+        generate_required = false;
+        if (!t->isUpconverted()) {
+            for (auto &info : key) {
+                bool generated = false;
+                if (std::holds_alternative<Element>(info)) {
+                    get(cache, std::get<Element>(info), use_self_alpha, generated);
+                }
+                else {
+                    get(cache, std::get<ElementWithChildren>(info).children, program, use_self_alpha, generated);
+                }
+                if (generated) {
+                    generate_required = true;
+                    regenerate = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (generate_required) {
+        bool _ = false;
         Rect r = {inf, inf, 0, 0};
         std::vector<Rect> region_sum;
         for (auto &info : key) {
             if (std::holds_alternative<Element>(info)) {
                 auto &e = std::get<Element>(info);
-                auto &t = get(cache, e, use_self_alpha);
+                auto &t = get(cache, e, use_self_alpha, _);
                 if (*t) {
                     auto [x, y, w, h] = t->rect();
                     r.x = std::min(r.x, x);
@@ -69,7 +104,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
             else if (std::holds_alternative<ElementWithChildren>(info)) {
                 auto &e = std::get<ElementWithChildren>(info);
                 if (e.children.size() > 0) {
-                    auto &t = get(cache, e.children, program, use_self_alpha);
+                    auto &t = get(cache, e.children, program, use_self_alpha, _);
                     if (*t) {
                         auto [x, y, w, h] = t->rect();
                         r.x = std::min(r.x, x);
@@ -114,6 +149,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
                     }
                 }
             }
+            bool is_upconverted = true;
             FrameBuffer fb;
             std::unique_ptr<Texture> texture = std::make_unique<Texture>(r, region);
             glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture->id(), 0);
@@ -128,8 +164,9 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
             glClear(GL_COLOR_BUFFER_BIT);
             assert(glGetError() == GL_NO_ERROR);
             for (auto &info : key) {
-                std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(cache, std::get<Element>(info), use_self_alpha)) : (get(cache, std::get<ElementWithChildren>(info).children, program, use_self_alpha));
+                std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(cache, std::get<Element>(info), use_self_alpha, _)) : (get(cache, std::get<ElementWithChildren>(info).children, program, use_self_alpha, _));
                 if (*t) {
+                    is_upconverted = is_upconverted && t->isUpconverted();
                     auto [x, y, w, h] = t->rect();
                     // patternの場合のoffsetを考慮。
                     Offset offset;
@@ -213,13 +250,23 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
                     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
                 }
             }
-            cache_.emplace(key, std::move(texture));
+            if (is_upconverted) {
+                Logger::log("texture upconverted!");
+                texture->upconverted();
+            }
+            cache_[key] = std::move(texture);
+            Logger::log("upcon: ", cache_.at(key)->isUpconverted());
         }
         else {
-            cache_.emplace(key, std::make_unique<Texture>());
+            cache_[key] = std::make_unique<Texture>();
         }
     }
     return cache_.at(key);
+}
+
+std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha) {
+    bool _ = false;
+    return get(cache, key, program, use_self_alpha, _);
 }
 
 void TextureCache::clearCache() {
