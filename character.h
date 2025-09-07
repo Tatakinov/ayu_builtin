@@ -79,6 +79,9 @@ class Character {
         void setDrag(double x, double y) {
             drag_ = {x, y, rect_.x, rect_.y};
         }
+        bool isInDragging() const {
+            return drag_.has_value();
+        }
         void setOffset(int x, int y);
         void resetBalloonPosition();
         Offset getOffset() {

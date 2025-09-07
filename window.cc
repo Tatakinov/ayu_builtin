@@ -340,7 +340,7 @@ void Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
 #endif // Windows
 #if defined(USE_WAYLAND)
     if (*texture) {
-        if (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset)) {
+        if (!parent_->isInDragging() && (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset))) {
             offset_ = offset;
             region_ = texture->region();
             wl_surface *surface = glfwGetWaylandWindow(window_);
