@@ -8,6 +8,7 @@
 
 #include "logger.h"
 
+#if defined(USE_ONNX)
 ImageCache::ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha)
     : alive_(true), use_self_alpha_(use_self_alpha), scale_(100), session_(nullptr) {
     std::filesystem::path model_path = exe_dir / "model.onnx";
@@ -90,6 +91,7 @@ ImageCache::ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha
         Logger::log(e.what());
     }
 }
+#endif // USE_ONNX
 
 ImageCache::~ImageCache() {
     alive_ = false;

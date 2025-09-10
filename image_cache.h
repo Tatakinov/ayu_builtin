@@ -4,7 +4,9 @@
 #include <condition_variable>
 #include <filesystem>
 #include <mutex>
+#if defined(USE_ONNX)
 #include <onnxruntime_cxx_api.h>
+#endif // USE_ONNX
 #include <optional>
 #include <queue>
 #include <unordered_map>
@@ -43,13 +45,19 @@ class ImageCache {
         std::queue<std::filesystem::path> queue_;
         std::unordered_map<std::filesystem::path, std::optional<ImageInfo>> cache_orig_;
         std::unordered_map<std::filesystem::path, std::optional<ImageInfo>> cache_;
+#if defined(USE_ONNX)
         Ort::Env env_;
         Ort::Session session_;
+#endif // USE_ONNX
 
         const std::optional<ImageInfo> &getOriginal(const std::filesystem::path &path);
 
     public:
+#if defined(USE_ONNX)
         ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha);
+#else
+        ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha) {}
+#endif // USE_ONNX
         ~ImageCache();
         void setScale(int scale);
         const std::optional<ImageInfo> &get(const std::filesystem::path &path);
