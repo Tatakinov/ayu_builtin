@@ -33,6 +33,8 @@ AYU_PATH="/path/to/ayu" ninix
 
 ## シェル倍率の変更に超解像を利用する
 
+`make`の代わりに`make -f Makefile.onnx`してバイナリ生成を行います。
+
 `_builtin.exe`と*同じ*ディレクトリに`model.onnx`を置くことで
 シェルサイズの変更に超解像を用いて綺麗な拡大を行います。
 
