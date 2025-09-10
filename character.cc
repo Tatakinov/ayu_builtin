@@ -182,8 +182,24 @@ void Character::setOffset(int x, int y) {
         std::unique_lock<std::mutex> lock(mutex_);
         rect_.x = x;
         rect_.y = y;
-        reset_balloon_position_ = true;
-        resetBalloonPosition();
+        GLFWmonitor *key = nullptr;
+        {
+            double distance = -1;
+            for (auto &[k, v] : windows_) {
+                double d = v->distance(rect_.x, rect_.y);
+                if (d < distance || distance == -1) {
+                    distance = d;
+                    key = k;
+                }
+            }
+        }
+        Rect monitor_rect = windows_[key]->getMonitorRect();
+        std::vector<std::string> args = {util::to_s(side_), util::to_s(monitor_rect.x), util::to_s(monitor_rect.y), util::to_s(monitor_rect.width), util::to_s(monitor_rect.height)};
+        Request req = {"EXECUTE", "UpdateMonitorRect", args};
+        enqueueDirectSSTP({req});
+        args = {util::to_s(side_), util::to_s(rect_.x), util::to_s(rect_.y), util::to_s(rect_.width), util::to_s(rect_.height)};
+        req = {"EXECUTE", "UpdateSurfaceRect", args};
+        enqueueDirectSSTP({req});
     }
 }
 
