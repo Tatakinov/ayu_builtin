@@ -64,7 +64,7 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     glfwGetMonitorPos(monitor, &monitor_rect_.x, &monitor_rect_.y);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 #else
-    zxdg_output_v1 *output = zxdg_output_manager_v1_get_xdg_output(parent->getManager(), glfwGetWaylandMonitor(monitor));
+    zxdg_output_v1 *output = zxdg_output_manager_v1_get_xdg_output(parent_->getManager(), glfwGetWaylandMonitor(monitor));
     assert(output);
     zxdg_output_v1_listener listener = {
         [](void *data, zxdg_output_v1 *o, int32_t x, int32_t y) {
@@ -263,7 +263,8 @@ void dump(const std::vector<RenderInfo> &infos) {
     }
 }
 
-void Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
+bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
+    bool regenerate = false;
     glfwMakeContextCurrent(window_);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     std::unique_ptr<Texture> &texture = cache_->get(image_cache, list, program_, use_self_alpha);
@@ -369,6 +370,7 @@ void Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
 #endif // USE_WAYLAND
     glfwMakeContextCurrent(nullptr);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    return texture->isUpconverted();
 }
 
 void Window::swapBuffers() {

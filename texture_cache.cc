@@ -39,7 +39,7 @@ class FrameBuffer {
         }
 };
 
-std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha, bool &regenerate) {
+std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, const Element &e, const std::unique_ptr<Program> &program, const bool use_self_alpha, bool &regenerate) {
     bool load_required = true;
     if (elements_.contains(e)) {
         auto &t = elements_.at(e);
@@ -54,7 +54,68 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
         }
     }
     if (load_required) {
-        elements_[e] = std::make_unique<Texture>(cache, e, use_self_alpha);
+        auto t = std::make_unique<Texture>(cache, e, use_self_alpha);
+        if (!*t) {
+            Logger::log("invalid texture");
+            elements_[e] = std::make_unique<Texture>();
+        }
+        else {
+            Logger::log("t1     : ", t->isUpconverted());
+            FrameBuffer fb;
+            auto texture = std::make_unique<Texture>(t->rect(), t->region());
+            glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture->id(), 0);
+            assert(glGetError() == GL_NO_ERROR);
+            GLenum buffers[1] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers(1, buffers);
+            assert(glGetError() == GL_NO_ERROR);
+            fb.bind();
+            program->use(view);
+            glClearColor(0.0, 0.0, 0.0, 0.0);
+            assert(glGetError() == GL_NO_ERROR);
+            glClear(GL_COLOR_BUFFER_BIT);
+            assert(glGetError() == GL_NO_ERROR);
+            auto [x, y, w, h] = t->rect();
+            // テクスチャは上下反転で保持されているので
+            // 素直に引数を取ってよい(左上原点とした座標変換はいらない)
+            glViewport(x, y, w, h);
+            assert(glGetError() == GL_NO_ERROR);
+            program->set(t->id());
+            switch (e.method) {
+                case Method::Base:
+                case Method::Add:
+                case Method::Overlay:
+                    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                    break;
+                case Method::OverlayFast:
+                    glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                    break;
+                case Method::OverlayMultiply:
+                    // FIXME
+                    glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE);
+                    break;
+                case Method::Replace:
+                    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ZERO, GL_ONE, GL_ONE);
+                    break;
+                case Method::Interpolate:
+                    glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                    break;
+                case Method::Reduce:
+                    // FIXME
+                    glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_ONE);
+                    break;
+                default:
+                    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+                    break;
+            }
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+            assert(glGetError() == GL_NO_ERROR);
+            assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+            Logger::log("t2     : ", t->isUpconverted());
+            if (t->isUpconverted()) {
+                texture->upconverted();
+            }
+            elements_[e] = std::move(texture);
+        }
     }
     Logger::log("return texture: ", elements_.at(e)->isUpconverted());
     return elements_.at(e);
@@ -69,7 +130,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
             for (auto &info : key) {
                 bool generated = false;
                 if (std::holds_alternative<Element>(info)) {
-                    get(cache, std::get<Element>(info), use_self_alpha, generated);
+                    get(cache, std::get<Element>(info), program, use_self_alpha, generated);
                 }
                 else {
                     get(cache, std::get<ElementWithChildren>(info).children, program, use_self_alpha, generated);
@@ -89,7 +150,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
         for (auto &info : key) {
             if (std::holds_alternative<Element>(info)) {
                 auto &e = std::get<Element>(info);
-                auto &t = get(cache, e, use_self_alpha, _);
+                auto &t = get(cache, e, program, use_self_alpha, _);
                 if (*t) {
                     auto [x, y, w, h] = t->rect();
                     r.x = std::min(r.x, x);
@@ -164,7 +225,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
             glClear(GL_COLOR_BUFFER_BIT);
             assert(glGetError() == GL_NO_ERROR);
             for (auto &info : key) {
-                std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(cache, std::get<Element>(info), use_self_alpha, _)) : (get(cache, std::get<ElementWithChildren>(info).children, program, use_self_alpha, _));
+                std::unique_ptr<Texture> &t = (std::holds_alternative<Element>(info)) ? (get(cache, std::get<Element>(info), program, use_self_alpha, _)) : (get(cache, std::get<ElementWithChildren>(info).children, program, use_self_alpha, _));
                 if (*t) {
                     is_upconverted = is_upconverted && t->isUpconverted();
                     auto [x, y, w, h] = t->rect();
@@ -183,40 +244,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
                     glViewport(offset.x + x, offset.y + y, w, h);
                     assert(glGetError() == GL_NO_ERROR);
                     program->set(t->id());
-                    // straight alpha
-                    if (std::holds_alternative<Element>(info)) {
-                        auto &e = std::get<Element>(info);
-                        switch (e.method) {
-                            case Method::Base:
-                            case Method::Add:
-                            case Method::Overlay:
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-                                break;
-                            case Method::OverlayFast:
-                                glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-                                break;
-                            case Method::OverlayMultiply:
-                                // FIXME
-                                glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE);
-                                break;
-                            case Method::Replace:
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ZERO, GL_ONE, GL_ONE);
-                                break;
-                            case Method::Interpolate:
-                                glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-                                break;
-                            case Method::Reduce:
-                                // FIXME
-                                glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_ONE);
-                                break;
-                            default:
-                                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-                                break;
-                        }
-                    }
-                    // pre-multiplied alpha
-                    else {
-                        auto &e = std::get<ElementWithChildren>(info);
+                    std::visit([](const auto &e) {
                         switch (e.method) {
                             case Method::Base:
                             case Method::Add:
@@ -244,7 +272,7 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
                                 glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
                                 break;
                         }
-                    }
+                    }, info);
                     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
                     assert(glGetError() == GL_NO_ERROR);
                     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);

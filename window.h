@@ -113,7 +113,7 @@ class Window {
             return !glfwWindowShouldClose(window_);
         }
 
-        void draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha);
+        bool draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha);
         void swapBuffers();
 
         void setPosition(int x, int y) {

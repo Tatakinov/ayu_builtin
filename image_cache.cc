@@ -174,8 +174,11 @@ const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::p
 }
 
 const std::optional<ImageInfo> &ImageCache::get(const std::filesystem::path &path) {
-    if (cache_.contains(path)) {
-        return cache_.at(path);
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (cache_.contains(path)) {
+            return cache_.at(path);
+        }
     }
     const auto &info = getOriginal(path);
     if (info == std::nullopt || scale_ == 100) {

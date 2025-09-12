@@ -37,6 +37,7 @@ class Character {
         std::mutex mutex_;
         std::optional<std::vector<RenderInfo>> prev_;
         bool position_changed_;
+        bool upconverted_;
     public:
         Character(Ayu *parent, int side, const std::string &name, std::unique_ptr<Seriko> seriko);
         ~Character();

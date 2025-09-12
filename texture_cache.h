@@ -19,7 +19,7 @@ class TextureCache {
         ~TextureCache() {
             clearCache();
         }
-        std::unique_ptr<Texture> &get(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha, bool &regenerate);
+        std::unique_ptr<Texture> &get(std::unique_ptr<ImageCache> &cache, const Element &e, const std::unique_ptr<Program> &program, const bool use_self_alpha, bool &regenerate);
         std::unique_ptr<Texture> &get(std::unique_ptr<ImageCache> &cache, const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha, bool &regenerate);
         std::unique_ptr<Texture> &get(std::unique_ptr<ImageCache> &cache, const std::vector<RenderInfo> &key, const std::unique_ptr<Program> &program, const bool use_self_alpha);
         void clearCache();

@@ -19,7 +19,7 @@ class Texture {
         std::vector<Rect> region_;
         bool is_upconverted_;
     public:
-        Texture() : valid_(false), is_upconverted_(false) {}
+        Texture() : valid_(false), is_upconverted_(true) {}
         Texture(Rect r, const std::vector<Rect> &region);
         Texture(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha);
         ~Texture() {

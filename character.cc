@@ -8,7 +8,7 @@ Character::Character(Ayu *parent, int side, const std::string &name, std::unique
     rect_({0, 0, 0, 0}), balloon_offset_({0, 0}),
     balloon_direction_(false), id_(-1), once_(true),
     reset_balloon_position_(false), current_cursor_type_(CursorType::Default),
-    position_changed_(false) {
+    position_changed_(false), upconverted_(false) {
     seriko_->setParent(this);
 }
 
@@ -28,12 +28,17 @@ void Character::destroy(GLFWmonitor *monitor) {
 void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
     bool use_self_alpha = (parent_->getInfo("seriko.use_self_alpha", false) == "1");
     auto list = seriko_->get(id_);
-    if (!prev_ || !(prev_.value() == list) || position_changed_ || changed) {
+    if (changed) {
+        upconverted_ = false;
+    }
+    if (!prev_ || !(prev_.value() == list) || position_changed_ || changed || !upconverted_) {
         position_changed_ = false;
         prev_ = list;
+        bool upconverted = true;
         for (auto &[_, v] : windows_) {
-            v->draw(cache, {rect_.x, rect_.y}, list, use_self_alpha);
+            upconverted = upconverted && v->draw(cache, {rect_.x, rect_.y}, list, use_self_alpha);
         }
+        upconverted_ = upconverted;
         for (auto &[_, v] : windows_) {
             v->swapBuffers();
         }
