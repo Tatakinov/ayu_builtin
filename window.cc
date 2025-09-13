@@ -47,6 +47,8 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    glfwWindowHintString(GLFW_WAYLAND_APP_ID, "io.github.tatakinov.ayu_builtin");
+    glfwWindowHintString(GLFW_X11_CLASS_NAME, "io.github.tatakinov.ayu_builtin");
 
     auto *mode = glfwGetVideoMode(monitor);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
