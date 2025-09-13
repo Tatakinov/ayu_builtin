@@ -126,7 +126,7 @@ const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::p
     std::vector<unsigned char> data;
     data.resize(w * h * 4);
     for (int i = 0; i < w * h; i++) {
-        // alpha: 0ならrgbも0にしないとalpha-blendで悪さをする
+        // alpha: 0なら全て0にする
         if (p[4 * i + 3] == 0) {
             data[4 * i + 0] = 0;
             data[4 * i + 1] = 0;
@@ -167,6 +167,70 @@ const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::p
         }
         if (pna != nullptr) {
             stbi_image_free(pna);
+        }
+    }
+    // そのままだとalphaが0とそうでない部分の境界で
+    // alpha-blendがうまくいかなくなるので
+    // alpha>0なピクセルの値をalpha=0なピクセルに伝播させる
+    {
+        std::vector<unsigned char> blurred;
+        blurred.resize(data.size());
+        const int blur[3][3] = {
+            {1, 2, 1},
+            {2, 4, 2},
+            {1, 2, 1},
+        };
+        auto in = [](int x, int y, int w, int h) {
+            if (x < 0) {
+                return false;
+            }
+            if (y < 0) {
+                return false;
+            }
+            if (x >= w) {
+                return false;
+            }
+            if (y >= h) {
+                return false;
+            }
+            return true;
+        };
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                double n = 0.0;
+                int sum[4] = {};
+                for (int j = -1; j <= 1; j++) {
+                    for (int i = -1; i <= 1; i++) {
+                        if (in(x + i, y + j, w, h)) {
+                            int index = 4 * ((y + j) * w + (x + i));
+                            // alpha>0なピクセルを伝播させるため
+                            // alpha=0なら無視する
+                            if (data[index + 3] == 0) {
+                                continue;
+                            }
+                            auto factor = blur[1 + j][1 + i];
+                            n += factor;
+                            sum[0] += data[index + 0] * factor;
+                            sum[1] += data[index + 1] * factor;
+                            sum[2] += data[index + 2] * factor;
+                            sum[3] += data[index + 3] * factor;
+                        }
+                    }
+                }
+                int index = 4 * (y * w + x);
+                blurred[index + 0] = std::min(255.0, std::ceil(sum[0] / n));
+                blurred[index + 1] = std::min(255.0, std::ceil(sum[1] / n));
+                blurred[index + 2] = std::min(255.0, std::ceil(sum[2] / n));
+                blurred[index + 3] = std::min(255.0, std::ceil(sum[3] / n));
+            }
+        }
+        for (int i = 0; i < w * h; i++) {
+            // alpha以外を伝播
+            if (blurred[4 * i + 3] > 0 && data[4 * i + 3] == 0) {
+                data[4 * i + 0] = blurred[4 * i + 0];
+                data[4 * i + 1] = blurred[4 * i + 1];
+                data[4 * i + 2] = blurred[4 * i + 2];
+            }
         }
     }
     cache_orig_[path] = {data, w, h, true};
