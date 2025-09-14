@@ -30,6 +30,7 @@ void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
     auto list = seriko_->get(id_);
     if (changed) {
         upconverted_ = false;
+        requestAdjust();
     }
     if (!prev_ || !(prev_.value() == list) || position_changed_ || changed || !upconverted_) {
         position_changed_ = false;
@@ -61,20 +62,24 @@ void Character::setSurface(int id) {
     id_ = id;
     if (id_ >= 0 && once_) {
         once_ = false;
-#if 0
-        for (auto &[_, v] : windows_) {
-            Rect r = v->getMonitorRect();
-            if (r.x <= rect_.x && r.x + r.width >= rect_.x &&
-                    r.y <= rect_.y && r.y + r.height >= rect_.y) {
-                v->requestAdjust();
-                return;
+        requestAdjust();
+    }
+}
+
+void Character::requestAdjust() {
+    GLFWmonitor *key = nullptr;
+    {
+        double distance = -1;
+        for (auto &[k, v] : windows_) {
+            double d = v->distance(rect_.x, rect_.y);
+            if (d < distance || distance == -1) {
+                distance = d;
+                key = k;
             }
         }
-#endif
-        for (auto &[_, v] : windows_) {
-            v->requestAdjust();
-            break;
-        }
+    }
+    if (windows_.contains(key)) {
+        windows_.at(key)->requestAdjust();
     }
 }
 

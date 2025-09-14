@@ -173,8 +173,8 @@ void Window::mouseButton(int button, int action, int mods) {
         parent_->resetDrag();
     }
     if (!mouse_state_[button].press && !mouse_state_[button].drag) {
-        int x = position_.x + cursor_position_.x;
-        int y = position_.y + cursor_position_.y;
+        int x = cursor_position_.x;
+        int y = cursor_position_.y;
         int b = 0;
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             b = 0;
@@ -189,6 +189,9 @@ void Window::mouseButton(int button, int action, int mods) {
         auto name = parent_->getHitBoxName(x + monitor_rect_.x, y + monitor_rect_.y);
 
         std::vector<std::string> args;
+        Offset offset = parent_->getOffset();
+        x = x + monitor_rect_.x - offset.x;
+        y = y + monitor_rect_.y - offset.y;
         args = {util::to_s(x), util::to_s(y), util::to_s(0), util::to_s(parent_->side()), name, util::to_s(b)};
 
         auto now = std::chrono::system_clock::now();

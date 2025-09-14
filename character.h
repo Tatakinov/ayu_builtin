@@ -53,6 +53,7 @@ class Character {
         void show();
         void hide();
         void setSurface(int id);
+        void requestAdjust();
         void startAnimation(int id);
         bool isPlayingAnimation(int id);
         void clearCache();
