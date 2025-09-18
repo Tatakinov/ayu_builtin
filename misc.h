@@ -27,6 +27,10 @@ enum class CollisionType {
     Rect, Ellipse, Circle, Polygon, Region,
 };
 
+enum class Alignment {
+    Bottom, Top, Free,
+};
+
 template <typename T>
 struct Position {
     T x, y;

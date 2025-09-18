@@ -75,9 +75,7 @@ class Character {
         std::optional<DragPosition> drag() {
             return drag_;
         }
-        void resetDrag() {
-            drag_ = std::nullopt;
-        }
+        void resetDrag();
         void setDrag(double x, double y) {
             drag_ = {x, y, rect_.x, rect_.y};
         }

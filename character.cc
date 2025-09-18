@@ -182,6 +182,66 @@ Offset Character::getBalloonOffset() {
     return offset;
 }
 
+void Character::resetDrag() {
+    drag_ = std::nullopt;
+
+    auto f = [](const std::string &v) {
+        if (v == "top") {
+            return Alignment::Top;
+        }
+        else if (v == "free") {
+            return Alignment::Free;
+        }
+        else {
+            return Alignment::Bottom;
+        }
+    };
+    Alignment align = Alignment::Bottom;
+    std::string key_side = util::side2str(side_) + ".seriko.alignmenttodesktop";
+    std::string key_all = "seriko.alignmenttodesktop";
+    // 優先度が低い順に調べる
+    std::string value = parent_->getInfo(key_all, true);
+    if (!value.empty()) {
+        align = f(value);
+    }
+    value = parent_->getInfo(key_side, true);
+    if (!value.empty()) {
+        align = f(value);
+    }
+    value = parent_->getInfo(key_all, false);
+    if (!value.empty()) {
+        align = f(value);
+    }
+    value = parent_->getInfo(key_side, false);
+    if (!value.empty()) {
+        align = f(value);
+    }
+
+    GLFWmonitor *key = nullptr;
+    {
+        double distance = -1;
+        for (auto &[k, v] : windows_) {
+            double d = v->distance(rect_.x, rect_.y);
+            if (d < distance || distance == -1) {
+                distance = d;
+                key = k;
+            }
+        }
+    }
+    Rect monitor_rect = windows_[key]->getMonitorRect();
+    switch (align) {
+        case Alignment::Bottom:
+            setOffset(rect_.x, monitor_rect.y + monitor_rect.height - rect_.height);
+            break;
+        case Alignment::Top:
+            setOffset(rect_.x, monitor_rect.y);
+            break;
+        case Alignment::Free:
+            // nop
+            break;
+    }
+}
+
 Offset Character::getCharacterOffset(int side) {
     return parent_->getCharacterOffset(side);
 }

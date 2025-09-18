@@ -62,7 +62,7 @@ class Ayu {
 
         void load();
 
-        std::string getInfo(std::string, bool fallback);
+        std::string getInfo(std::string key, bool fallback);
 
 #if defined(USE_WAYLAND)
         wl_compositor *getCompositor();
