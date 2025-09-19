@@ -272,6 +272,7 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
     bool regenerate = false;
     glfwMakeContextCurrent(window_);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    cache_->clearCache(false);
     std::unique_ptr<Texture> &texture = cache_->get(image_cache, list, program_, use_self_alpha);
     glClearColor(0.0, 0.0, 0.0, 0.0);
     assert(glGetError() == GL_NO_ERROR);

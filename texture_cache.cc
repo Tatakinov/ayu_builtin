@@ -297,9 +297,9 @@ std::unique_ptr<Texture> &TextureCache::get(std::unique_ptr<ImageCache> &cache, 
     return get(cache, key, program, use_self_alpha, _);
 }
 
-void TextureCache::clearCache() {
-    elements_.clear();
+void TextureCache::clearCache(bool full) {
+    if (full) {
+        elements_.clear();
+    }
     cache_.clear();
-    Logger::log("elements: ", elements_.size());
-    Logger::log("cache: ", cache_.size());
 }
