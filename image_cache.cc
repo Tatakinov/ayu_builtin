@@ -72,7 +72,7 @@ ImageCache::ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha
                     int h_resize = std::round(info->height() * scale_ / 100.0);
                     std::vector<unsigned char> resize;
                     resize.resize(w_resize * h_resize * 4);
-                    stbir_resize_uint8_linear(dest.data(), w, h, 4, resize.data(), w_resize, h_resize, 4, STBIR_RGBA);
+                    stbir_resize_uint8_linear(dest.data(), w, h, 0, resize.data(), w_resize, h_resize, 0, STBIR_RGBA);
                     dest = resize;
                     w = w_resize;
                     h = h_resize;
@@ -114,7 +114,7 @@ void ImageCache::setScale(int scale) {
 const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::path &path) {
     Logger::log("scale => ", scale_);
     if (cache_orig_.contains(path)) {
-        return cache_.at(path);
+        return cache_orig_.at(path);
     }
     unsigned char *p;
     int w, h, _bpp;
@@ -253,7 +253,7 @@ const std::optional<ImageInfo> &ImageCache::get(const std::filesystem::path &pat
     int h = std::round(info->height() * scale_ / 100.0);
     std::vector<unsigned char> resize;
     resize.resize(w * h * 4);
-    stbir_resize_uint8_linear(info->get().data(), info->width(), info->height(), 4, resize.data(), w, h, 4, STBIR_RGBA);
+    stbir_resize_uint8_linear(info->get().data(), info->width(), info->height(), 0, resize.data(), w, h, 0, STBIR_RGBA);
     if (scale_ <= 100 || !th_) {
         cache_[path] = {resize, w, h, true};
     }
