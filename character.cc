@@ -184,6 +184,7 @@ Offset Character::getBalloonOffset() {
 
 void Character::resetDrag() {
     drag_ = std::nullopt;
+    position_changed_ = true;
 
     auto f = [](const std::string &v) {
         if (v == "top") {
