@@ -56,7 +56,8 @@ class ImageCache {
 #if defined(USE_ONNX)
         ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha);
 #else
-        ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha) {}
+        ImageCache(const std::filesystem::path &exe_dir, bool use_self_alpha)
+        : alive_(true), use_self_alpha_(use_self_alpha), scale_(100) {}
 #endif // USE_ONNX
         ~ImageCache();
         void setScale(int scale);
