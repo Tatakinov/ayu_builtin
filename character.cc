@@ -271,6 +271,9 @@ void Character::setOffset(int x, int y) {
         args = {util::to_s(side_), util::to_s(rect_.x), util::to_s(rect_.y), util::to_s(rect_.width), util::to_s(rect_.height)};
         req = {"EXECUTE", "UpdateSurfaceRect", args};
         enqueueDirectSSTP({req});
+        args = {util::to_s(side_)};
+        req = {"EXECUTE", "ResetBalloonPosition", args};
+        enqueueDirectSSTP({req});
     }
 }
 
