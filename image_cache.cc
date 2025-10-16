@@ -143,6 +143,7 @@ const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::p
     stbi_image_free(p);
     if (!use_self_alpha_) {
         auto pna_filename = path.parent_path() / path.stem();
+        pna_filename += ".pna";
         unsigned char *pna;
         int w_pna, h_pna, _bpp_pna;
         pna = stbi_load(pna_filename.string().c_str(), &w_pna, &h_pna, &_bpp_pna, 4);
