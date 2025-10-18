@@ -24,6 +24,9 @@ namespace util {
     int random(int a, int b);
 
     std::string side2str(int side);
+
+    bool isWayland();
+    bool isCompatibleRendering();
 }
 
 #endif // UTIL_H_

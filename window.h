@@ -53,8 +53,6 @@ class Window {
             instance->resize(width, height);
         }
 
-        void resize(int width, int height);
-
         static void focusCallback(GLFWwindow *window, int focused) {
             auto instance = static_cast<Window *>(glfwGetWindowUserPointer(window));
             if (instance == NULL) {
@@ -62,8 +60,6 @@ class Window {
             }
             instance->focus(focused);
         }
-
-        void focus(int focused);
 
         static void positionCallback(GLFWwindow *window, int x, int y) {
             auto instance = static_cast<Window *>(glfwGetWindowUserPointer(window));
@@ -73,7 +69,7 @@ class Window {
             instance->position(x, y);
         }
 
-        void position(int x, int y);
+        void focus(int focused);
 
         static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods) {
             auto instance = static_cast<Window *>(glfwGetWindowUserPointer(window));
@@ -112,6 +108,9 @@ class Window {
         operator bool() {
             return !glfwWindowShouldClose(window_);
         }
+
+        void resize(int width, int height);
+        void position(int x, int y);
 
         bool draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha);
         void swapBuffers();

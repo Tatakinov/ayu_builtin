@@ -65,11 +65,7 @@ class Character {
             }
             return r;
         }
-        void setSize(int w, int h) {
-            std::unique_lock<std::mutex> lock(mutex_);
-            rect_.width = w;
-            rect_.height = h;
-        }
+        void setSize(int w, int h);
         void setBalloonOffset(int x, int y);
         Offset getBalloonOffset();
         std::optional<DragPosition> drag() {

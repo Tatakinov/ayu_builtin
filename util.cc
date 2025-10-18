@@ -1,6 +1,7 @@
 #include "util.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <random>
 
 namespace {
@@ -33,5 +34,14 @@ namespace util {
         }
         // unreachable
         assert(false);
+    }
+
+    bool isWayland() {
+        std::string wayland = "wayland";
+        return (wayland == getenv("XDG_SESSION_TYPE"));
+    }
+
+    bool isCompatibleRendering() {
+        return !!getenv("NINIX_COMPATIBLE_RENDERING");
     }
 }

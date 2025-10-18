@@ -343,6 +343,9 @@ void Ayu::create(int side) {
     auto **monitors = glfwGetMonitors(&count);
     for (int i = 0; i < count; i++) {
         characters.at(side)->create(monitors[i]);
+        if (!util::isWayland() || !util::isCompatibleRendering()) {
+            break;
+        }
     }
     return;
 }

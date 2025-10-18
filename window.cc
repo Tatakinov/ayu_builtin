@@ -96,11 +96,12 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
     while (wl_display_dispatch(display) != -1 && counter_ > 0) {}
     zxdg_output_v1_destroy(output);
 #endif
-#if defined(_WIN32) || defined(WIN32)
-    window_ = glfwCreateWindow(monitor_rect_.width, monitor_rect_.height, parent_->name().c_str(), nullptr, nullptr);
-#else
-    window_ = glfwCreateWindow(mode->width, mode->height, parent_->name().c_str(), monitor, nullptr);
-#endif
+    if (util::isWayland() && util::isCompatibleRendering()) {
+        window_ = glfwCreateWindow(mode->width, mode->height, parent_->name().c_str(), monitor, nullptr);
+    }
+    else {
+        window_ = glfwCreateWindow(200, 200, parent_->name().c_str(), nullptr, nullptr);
+    }
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 
     glfwMakeContextCurrent(window_);
@@ -154,6 +155,9 @@ void Window::resize(int width, int height) {
     assert(glGetError() == GL_NO_ERROR);
     std::unique_lock<std::mutex> lock(mutex_);
     size_ = {width, height};
+    if (!util::isWayland()) {
+        glfwSetWindowSize(window_, width, height);
+    }
 }
 
 void Window::focus(int focused) {
@@ -161,6 +165,9 @@ void Window::focus(int focused) {
 }
 
 void Window::position(int x, int y) {
+    if (!util::isWayland()) {
+        glfwSetWindowPos(window_, x, y);
+    }
     {
         std::unique_lock<std::mutex> lock(mutex_);
         position_ = {x, y};
@@ -186,12 +193,16 @@ void Window::mouseButton(int button, int action, int mods) {
             b = 2;
         }
 
-        auto name = parent_->getHitBoxName(x + monitor_rect_.x, y + monitor_rect_.y);
+        if (util::isWayland() && util::isCompatibleRendering()) {
+            x = x + monitor_rect_.x;
+            y = y + monitor_rect_.y;
+        }
+        auto name = parent_->getHitBoxName(x, y);
 
         std::vector<std::string> args;
         Offset offset = parent_->getOffset();
-        x = x + monitor_rect_.x - offset.x;
-        y = y + monitor_rect_.y - offset.y;
+        x = x - offset.x;
+        y = y - offset.y;
         args = {util::to_s(x), util::to_s(y), util::to_s(0), util::to_s(parent_->side()), name, util::to_s(b)};
 
         auto now = std::chrono::system_clock::now();
@@ -232,7 +243,12 @@ void Window::mouseButton(int button, int action, int mods) {
 
 void Window::cursorPosition(double x, double y) {
     if (!parent_->drag().has_value()) {
-        auto name = parent_->getHitBoxName(x + monitor_rect_.x, y + monitor_rect_.y);
+        int xi = x, yi = y;
+        if (util::isWayland() && util::isCompatibleRendering()) {
+            xi = xi + monitor_rect_.x;
+            yi = yi + monitor_rect_.y;
+        }
+        auto name = parent_->getHitBoxName(xi, yi);
         if (name.empty()) {
             parent_->setCursor(CursorType::Default);
         }
@@ -241,12 +257,21 @@ void Window::cursorPosition(double x, double y) {
         }
     }
     if (!parent_->drag().has_value() && mouse_state_[GLFW_MOUSE_BUTTON_LEFT].press) {
-        parent_->setDrag(cursor_position_.x + monitor_rect_.x, cursor_position_.y + monitor_rect_.y);
+        if (util::isWayland() && util::isCompatibleRendering()) {
+            parent_->setDrag(cursor_position_.x + monitor_rect_.x, cursor_position_.y + monitor_rect_.y);
+        }
+        else {
+            parent_->setDrag(cursor_position_.x, cursor_position_.y);
+        }
     }
     cursor_position_ = {x, y};
     if (parent_->drag().has_value()) {
         auto [dx, dy, px, py] = parent_->drag().value();
-        parent_->setOffset(px + (x + monitor_rect_.x) - dx, py + (y + monitor_rect_.y) - dy);
+        if (util::isWayland() && util::isCompatibleRendering()) {
+            x = x + monitor_rect_.x;
+            y = y + monitor_rect_.y;
+        }
+        parent_->setOffset(px + x - dx, py + y - dy);
     }
     for (auto &[k, v] : mouse_state_) {
         if (v.press) {
@@ -301,7 +326,12 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
         }
         parent_->setSize(x + w, y + h);
         // OpenGLは左下が原点なのでyは上下逆にする
-        glViewport(offset.x - monitor_rect_.x + x, monitor_rect_.height - (offset.y - monitor_rect_.y + y + h), w, h);
+        if (util::isWayland() && util::isCompatibleRendering()) {
+            glViewport(offset.x - monitor_rect_.x + x, monitor_rect_.height - (offset.y - monitor_rect_.y + y + h), w, h);
+        }
+        else {
+            glViewport(x, size_.y - (y + h), w, h);
+        }
         assert(glGetError() == GL_NO_ERROR);
         program_->use(view);
         program_->set(texture->id());
@@ -356,7 +386,12 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
             //auto [_x, _y, _w, h] = texture->rect();
             for (auto &r : texture->region()) {
                 // wl_regionは左上が原点
-                wl_region_add(region, offset.x - monitor_rect_.x + r.x, offset.y - monitor_rect_.y + r.y, r.width, r.height);
+                if (util::isCompatibleRendering()) {
+                    wl_region_add(region, offset.x - monitor_rect_.x + r.x, offset.y - monitor_rect_.y + r.y, r.width, r.height);
+                }
+                else {
+                    wl_region_add(region, r.x, r.y, r.width, r.height);
+                }
             }
             wl_surface_set_input_region(surface, region);
             wl_region_destroy(region);

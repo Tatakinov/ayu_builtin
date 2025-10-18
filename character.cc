@@ -37,7 +37,12 @@ void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
         prev_ = list;
         bool upconverted = true;
         for (auto &[_, v] : windows_) {
-            upconverted = upconverted && v->draw(cache, {rect_.x, rect_.y}, list, use_self_alpha);
+            if (util::isWayland() && util::isCompatibleRendering()) {
+                upconverted = upconverted && v->draw(cache, {rect_.x, rect_.y}, list, use_self_alpha);
+            }
+            else {
+                upconverted = upconverted && v->draw(cache, {0, 0}, list, use_self_alpha);
+            }
         }
         upconverted_ = upconverted;
         for (auto &[_, v] : windows_) {
@@ -168,6 +173,15 @@ void Character::resetBalloonPosition() {
     parent_->enqueueDirectSSTP({req});
 }
 
+void Character::setSize(int w, int h) {
+    for (auto &[_, v] : windows_) {
+        v->resize(w, h);
+    }
+    std::unique_lock<std::mutex> lock(mutex_);
+    rect_.width = w;
+    rect_.height = h;
+}
+
 void Character::setBalloonOffset(int x, int y) {
     std::unique_lock<std::mutex> lock(mutex_);
     balloon_offset_ = {x, y};
@@ -250,9 +264,14 @@ Offset Character::getCharacterOffset(int side) {
 void Character::setOffset(int x, int y) {
     if (x != rect_.x || y != rect_.y) {
         position_changed_ = true;
-        std::unique_lock<std::mutex> lock(mutex_);
-        rect_.x = x;
-        rect_.y = y;
+        for (auto &[_, v] : windows_) {
+            v->position(x, y);
+        }
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            rect_.x = x;
+            rect_.y = y;
+        }
         GLFWmonitor *key = nullptr;
         {
             double distance = -1;
