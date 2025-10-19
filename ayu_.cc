@@ -457,11 +457,21 @@ void Ayu::resetBalloonPosition() {
     }
 }
 
-Offset Ayu::getCharacterOffset(int side) {
-    if (!characters.contains(side)) {
-        return {0, 0};
+std::optional<Offset> Ayu::getCharacterOffset(int side) {
+    int s = side;
+    std::optional<Offset> ret = std::nullopt;
+    for (; s >= 0; s--) {
+        if (characters.contains(s)) {
+            break;
+        }
     }
-    return characters.at(side)->getOffset();
+    if (s == -1) {
+        ret = {0, 0};
+    }
+    else if (characters.at(s)->isAdjusted()) {
+        ret = characters.at(s)->getOffset();
+    }
+    return ret;
 }
 
 void Ayu::setBalloonOffset(int side, int x, int y) {

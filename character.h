@@ -4,6 +4,7 @@
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
 #include <memory>
+#include <optional>
 
 #if defined(USE_WAYLAND)
 #include <wayland-client.h>
@@ -88,7 +89,8 @@ class Character {
             }
             return offset;
         }
-        Offset getCharacterOffset(int side);
+        std::optional<Offset> getCharacterOffset(int side);
+        bool isAdjusted() const;
         std::string sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args);
         void enqueueDirectSSTP(std::vector<Request> list);
         void bind(int id, bool enable);

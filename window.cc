@@ -131,7 +131,12 @@ Window::Window(Character *parent, GLFWmonitor *monitor)
 
     glEnable(GL_BLEND);
 
-    resizeCallback(window_, mode->width, mode->height);
+    if (util::isWayland() && !util::isCompatibleRendering()) {
+        glfwMaximizeWindow(window_);
+    }
+    else {
+        resizeCallback(window_, mode->width, mode->height);
+    }
 }
 
 Window::~Window() {
@@ -155,9 +160,6 @@ void Window::resize(int width, int height) {
     assert(glGetError() == GL_NO_ERROR);
     std::unique_lock<std::mutex> lock(mutex_);
     size_ = {width, height};
-    if (!util::isWayland()) {
-        glfwSetWindowSize(window_, width, height);
-    }
 }
 
 void Window::focus(int focused) {
@@ -193,9 +195,10 @@ void Window::mouseButton(int button, int action, int mods) {
             b = 2;
         }
 
-        if (util::isWayland() && util::isCompatibleRendering()) {
-            x = x + monitor_rect_.x;
-            y = y + monitor_rect_.y;
+        if (util::isWayland()) {
+            auto r = getMonitorRect();
+            x = x + r.x;
+            y = y + r.y;
         }
         auto name = parent_->getHitBoxName(x, y);
 
@@ -244,9 +247,10 @@ void Window::mouseButton(int button, int action, int mods) {
 void Window::cursorPosition(double x, double y) {
     if (!parent_->drag().has_value()) {
         int xi = x, yi = y;
-        if (util::isWayland() && util::isCompatibleRendering()) {
-            xi = xi + monitor_rect_.x;
-            yi = yi + monitor_rect_.y;
+        if (util::isWayland()) {
+            auto r = getMonitorRect();
+            xi = xi + r.x;
+            yi = yi + r.y;
         }
         auto name = parent_->getHitBoxName(xi, yi);
         if (name.empty()) {
@@ -294,6 +298,9 @@ void dump(const std::vector<RenderInfo> &infos) {
 }
 
 bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
+    if (size_.x == 0 || size_.y == 0) {
+        return false;
+    }
     bool regenerate = false;
     glfwMakeContextCurrent(window_);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
@@ -305,29 +312,37 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
     assert(glGetError() == GL_NO_ERROR);
     if (*texture) {
         auto [x, y, w, h] = texture->rect();
-        if (adjust_) {
-            adjust_ = false;
+        auto r = getMonitorRect();
+        while (adjust_) {
             int side = parent_->side();
-            int origin_x = monitor_rect_.x + monitor_rect_.width;
+            int origin_x = r.x + r.width;
             if (side > 0) {
-                Offset o = parent_->getCharacterOffset(side - 1);
-                if (o.x < origin_x) {
-                    origin_x = o.x;
+                auto o = parent_->getCharacterOffset(side - 1);
+                if (!o) {
+                    return false;
+                }
+                if (o->x < origin_x) {
+                    origin_x = o->x;
                 }
             }
             origin_x -= x + w;
-            if (origin_x < monitor_rect_.x) {
-                origin_x = monitor_rect_.x;
+            if (origin_x < r.x) {
+                origin_x = r.x;
             }
-            int origin_y = monitor_rect_.y + monitor_rect_.height;
+            int origin_y = r.y + r.height;
             origin_y -= y + h;
             parent_->setOffset(origin_x, origin_y);
             offset = {origin_x, origin_y};
+
+            adjust_ = false;
+        }
+        if (!util::isWayland()) {
+            glfwSetWindowSize(window_, x + w, y + h);
         }
         parent_->setSize(x + w, y + h);
         // OpenGLは左下が原点なのでyは上下逆にする
-        if (util::isWayland() && util::isCompatibleRendering()) {
-            glViewport(offset.x - monitor_rect_.x + x, monitor_rect_.height - (offset.y - monitor_rect_.y + y + h), w, h);
+        if (util::isWayland()) {
+            glViewport(offset.x - r.x + x, r.height - (offset.y - r.y + y + h), w, h);
         }
         else {
             glViewport(x, size_.y - (y + h), w, h);
@@ -386,11 +401,11 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
             //auto [_x, _y, _w, h] = texture->rect();
             for (auto &r : texture->region()) {
                 // wl_regionは左上が原点
-                if (util::isCompatibleRendering()) {
+                if (util::isWayland() && util::isCompatibleRendering()) {
                     wl_region_add(region, offset.x - monitor_rect_.x + r.x, offset.y - monitor_rect_.y + r.y, r.width, r.height);
                 }
                 else {
-                    wl_region_add(region, r.x, r.y, r.width, r.height);
+                    wl_region_add(region, offset.x + r.x, offset.y + r.y, r.width, r.height);
                 }
             }
             wl_surface_set_input_region(surface, region);

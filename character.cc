@@ -1,6 +1,7 @@
 #include "character.h"
 
 #include "sstp.h"
+#include "util.h"
 
 Character::Character(Ayu *parent, int side, const std::string &name, std::unique_ptr<Seriko> seriko)
     : parent_(parent), side_(side), name_(name),
@@ -37,7 +38,7 @@ void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
         prev_ = list;
         bool upconverted = true;
         for (auto &[_, v] : windows_) {
-            if (util::isWayland() && util::isCompatibleRendering()) {
+            if (util::isWayland()) {
                 upconverted = upconverted && v->draw(cache, {rect_.x, rect_.y}, list, use_self_alpha);
             }
             else {
@@ -175,7 +176,9 @@ void Character::resetBalloonPosition() {
 
 void Character::setSize(int w, int h) {
     for (auto &[_, v] : windows_) {
-        v->resize(w, h);
+        if (!util::isWayland()) {
+            v->resize(w, h);
+        }
     }
     std::unique_lock<std::mutex> lock(mutex_);
     rect_.width = w;
@@ -257,7 +260,7 @@ void Character::resetDrag() {
     }
 }
 
-Offset Character::getCharacterOffset(int side) {
+std::optional<Offset> Character::getCharacterOffset(int side) {
     return parent_->getCharacterOffset(side);
 }
 
@@ -294,6 +297,14 @@ void Character::setOffset(int x, int y) {
         req = {"EXECUTE", "ResetBalloonPosition", args};
         enqueueDirectSSTP({req});
     }
+}
+
+bool Character::isAdjusted() const {
+    bool is_adjusted = true;
+    for (auto &[_, v] : windows_) {
+        is_adjusted = is_adjusted && v->isAdjusted();
+    }
+    return is_adjusted;
 }
 
 std::string Character::sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args) {

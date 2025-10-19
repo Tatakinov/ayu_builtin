@@ -17,6 +17,7 @@
 #include "misc.h"
 #include "program.h"
 #include "texture_cache.h"
+#include "util.h"
 
 class Character;
 class TextureCache;
@@ -141,11 +142,22 @@ class Window {
         }
 
         Rect getMonitorRect() const {
-            return monitor_rect_;
+            if (util::isWayland() && !util::isCompatibleRendering()) {
+                Rect r = {0, 0, 0, 0};
+                glfwGetWindowSize(window_, &r.width, &r.height);
+                return r;
+            }
+            else {
+                return monitor_rect_;
+            }
         }
 
         void requestAdjust() {
             adjust_ = true;
+        }
+
+        bool isAdjusted() const {
+            return !adjust_;
         }
 
         double distance(int x, int y) const;

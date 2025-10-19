@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <sstream>
 #include <thread>
@@ -78,7 +79,7 @@ class Ayu {
         void setBalloonOffset(int side, int x, int y);
         Offset getBalloonOffset(int side);
 
-        Offset getCharacterOffset(int side);
+        std::optional<Offset> getCharacterOffset(int side);
 
         void show(int side);
 
