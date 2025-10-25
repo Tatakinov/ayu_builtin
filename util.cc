@@ -42,6 +42,6 @@ namespace util {
     }
 
     bool isCompatibleRendering() {
-        return !!getenv("NINIX_COMPATIBLE_RENDERING");
+        return !!getenv("NINIX_ENABLE_MULTI_MONITOR");
     }
 }
