@@ -18,6 +18,12 @@
 #include <GLFW/glfw3native.h>
 #endif // USE_WAYLAND
 
+#if defined(USE_X11)
+#define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_NATIVE_INCLUDE_NONE
+#include <GLFW/glfw3native.h>
+#endif // USE_X11
+
 #include "character.h"
 #include "logger.h"
 #include "sstp.h"
@@ -424,6 +430,30 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
         }
     }
 #endif // USE_WAYLAND
+#if defined(USE_X11)
+    if (*texture) {
+        if (!parent_->isInDragging() && (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset))) {
+            offset_ = offset;
+            region_ = texture->region();
+            Display *display = glfwGetX11Display();
+            Window window = glfwGetX11Window(window_);
+            std::vector<XRectangle> rect;
+            rect.reserve(texture->region().size());
+            for (auto &r : texture->region()) {
+                rect.push_back({r.x, r.y, r.width, r.height});
+            }
+            XShapeCombineRectangles(display, window, ShapeBounding, 0, 0, rect.data(), rect.size(), ShapeSet, Unsorted);
+        }
+    }
+    else {
+        if (!region_ || region_.value().size() > 0) {
+            region_ = std::make_optional<std::vector<Rect>>();
+            Display *display = glfwGetX11Display();
+            Window window = glfwGetX11Window(window_);
+            XShapeCombineRectangles(display, window, ShapeBounding, 0, 0, nullptr, 0, ShapeSet, Unsorted);
+        }
+    }
+#endif // USE_X11
     glfwMakeContextCurrent(nullptr);
     assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     return texture->isUpconverted();
