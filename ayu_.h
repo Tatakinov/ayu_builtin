@@ -40,6 +40,7 @@ class Ayu {
         std::unique_ptr<std::thread> th_send_;
         std::filesystem::path ayu_dir_;
         std::unordered_map<std::string, std::string> info_;
+        std::unordered_map<int, std::unordered_map<std::string, int>> bind_id_;
         std::unique_ptr<Surfaces> surfaces_;
         std::unordered_map<CursorType, GLFWcursor *> cursors_;
         std::unique_ptr<ImageCache> cache_;
@@ -90,6 +91,8 @@ class Ayu {
         void startAnimation(int side, int id);
 
         bool isPlayingAnimation(int side, int id);
+
+        void bind(int side, int id, std::string from, BindFlag flag);
 
         void clearCache();
 

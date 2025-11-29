@@ -3,6 +3,10 @@
 
 #include <vector>
 
+enum class BindFlag {
+    True, False, Toggle,
+};
+
 enum class From {
     System, Seriko, User, YenE, Talk,
 };

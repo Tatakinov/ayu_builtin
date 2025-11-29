@@ -31,6 +31,7 @@
 
 #include "ayu.h"
 #include "logger.h"
+#include "misc.h"
 #include "sstp.h"
 #include "util.h"
 #include "window.h"
@@ -169,7 +170,51 @@ bool Ayu::init() {
                         if (pos == std::string::npos) {
                             continue;
                         }
-                        info_[value.substr(0, pos)] = value.substr(pos + 1);
+                        auto key = value.substr(0, pos);
+                        value = value.substr(pos + 1);
+                        info_[key] = value;
+                        do {
+                            std::string tmp, group, name, category, part;
+                            int side = -1, id = -1;
+                            {
+                                std::istringstream iss(key);
+                                std::getline(iss, tmp, '.');
+                                if (tmp == "sakura") {
+                                    side = 0;
+                                }
+                                else if (tmp == "kero") {
+                                    side = 1;
+                                }
+                                else if (tmp.starts_with("char")) {
+                                    util::to_x(tmp.substr(4), side);
+                                }
+                                else {
+                                    break;
+                                }
+                                std::getline(iss, tmp, '.');
+                                if (!tmp.starts_with("bindgroup")) {
+                                    break;
+                                }
+                                util::to_x(tmp.substr(9), id);
+                                std::getline(iss, tmp, '.');
+                                if (tmp != "name") {
+                                    break;
+                                }
+                            }
+                            {
+                                std::istringstream iss(value);
+                                std::getline(iss, category, ',');
+                                if (category.empty()) {
+                                    break;
+                                }
+                                std::getline(iss, part, ',');
+                                if (part.empty()) {
+                                    break;
+                                }
+                            }
+                            key = category + "," + part;
+                            bind_id_[side][key] = id;
+                        } while (false);
                     }
                     loaded_ = true;
                 }
@@ -225,6 +270,29 @@ bool Ayu::init() {
                 res = {200, "OK"};
                 bool playing = isPlayingAnimation(side, id);
                 res(0) = static_cast<int>(playing);
+            }
+            else if (event == "Bind" && req(0) && req(1) && req(2) && req(3) && req(4)) {
+                int side;
+                BindFlag flag = BindFlag::Toggle;
+                auto arg = req(4).value();
+                if (arg == "true") {
+                    flag = BindFlag::True;
+                }
+                else if (arg == "false") {
+                    flag = BindFlag::False;
+                }
+                util::to_x(req(0).value(), side);
+                do {
+                    auto key = req(1).value() + "," + req(2).value();
+                    if (!bind_id_.contains(side)) {
+                        break;
+                    }
+                    if (!bind_id_.at(side).contains(key)) {
+                        break;
+                    }
+                    int id = bind_id_.at(side).at(key);
+                    bind(side, id, req(3).value(), flag);
+                } while (false);
             }
             else {
                 std::vector<std::string> args;
@@ -383,6 +451,13 @@ bool Ayu::isPlayingAnimation(int side, int id) {
         return false;
     }
     return characters.at(side)->isPlayingAnimation(id);
+}
+
+void Ayu::bind(int side, int id, std::string from, BindFlag flag) {
+    if (!characters.contains(side)) {
+        return;
+    }
+    characters.at(side)->bind(id, from, flag);
 }
 
 void Ayu::clearCache() {

@@ -57,6 +57,7 @@ class Character {
         void requestAdjust();
         void startAnimation(int id);
         bool isPlayingAnimation(int id);
+        void bind(int id, std::string from, BindFlag flag);
         void clearCache();
         Rect getRect() {
             Rect r;
@@ -93,7 +94,6 @@ class Character {
         bool isAdjusted() const;
         std::string sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args);
         void enqueueDirectSSTP(std::vector<Request> list);
-        void bind(int id, bool enable);
         bool isBinding(int id);
         std::string getHitBoxName(int x, int y);
         void setCursor(CursorType type);

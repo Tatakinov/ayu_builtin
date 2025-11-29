@@ -99,6 +99,19 @@ bool Character::isPlayingAnimation(int id) {
     return seriko_->active(id);
 }
 
+void Character::bind(int id, std::string from, BindFlag flag) {
+    bool is_binding = seriko_->isBinding(id);
+    if (flag == BindFlag::True && is_binding) {
+        return;
+    }
+    if (flag == BindFlag::False && !is_binding) {
+        return;
+    }
+    // toggle
+    is_binding = !is_binding;
+    seriko_->bind(id, is_binding);
+}
+
 void Character::clearCache() {
     for (auto &[_, v] : windows_) {
         v->clearCache();
@@ -313,10 +326,6 @@ std::string Character::sendDirectSSTP(std::string method, std::string command, s
 
 void Character::enqueueDirectSSTP(std::vector<Request> list) {
     parent_->enqueueDirectSSTP(list);
-}
-
-void Character::bind(int id, bool enable) {
-    seriko_->bind(id, enable);
 }
 
 bool Character::isBinding(int id) {
