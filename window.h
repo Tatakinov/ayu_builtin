@@ -125,8 +125,10 @@ class Window {
             return scale_;
         }
 
-        void show() {
-            glfwShowWindow(window_);
+        void show(bool force) {
+            if (force || glfwGetWindowAttrib(window_, GLFW_VISIBLE) == GLFW_FALSE) {
+                glfwShowWindow(window_);
+            }
             assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
         }
 

@@ -52,9 +52,9 @@ void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
     }
 }
 
-void Character::show() {
+void Character::show(bool force) {
     for (auto &[_, v] : windows_) {
-        v->show();
+        v->show(force);
     }
 }
 

@@ -51,7 +51,7 @@ class Character {
         const std::string &name() const {
             return name_;
         }
-        void show();
+        void show(bool force = false);
         void hide();
         void setSurface(int id);
         void requestAdjust();
