@@ -2,48 +2,48 @@
 #define TEXTURE_H_
 
 #include <cassert>
-#include <memory>
-#include <string>
-#include <unordered_map>
 
-#include "glad/glad.h"
-#include "image_cache.h"
-#include "misc.h"
-#include "surface.h"
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_surface.h>
 
-class Texture {
+class ImageInfo;
+
+class WrapSurface {
     private:
-        GLuint id_;
-        Rect r_;
-        bool valid_;
-        std::vector<Rect> region_;
-        bool is_upconverted_;
+        SDL_Surface *surface_;
     public:
-        Texture() : valid_(false), is_upconverted_(true) {}
-        Texture(Rect r, const std::vector<Rect> &region);
-        Texture(std::unique_ptr<ImageCache> &cache, const Element &e, const bool use_self_alpha);
-        ~Texture() {
-            glDeleteTextures(1, &id_);
+        WrapSurface(ImageInfo &info);
+        ~WrapSurface();
+        SDL_Surface *surface() {
+            return surface_;
         }
-        GLuint id() const {
-            assert(valid_);
-            return id_;
+        int width() const {
+            assert(surface_);
+            return surface_->w;
         }
-        Rect rect() const {
-            assert(valid_);
-            return r_;
+        int height() const {
+            assert(surface_);
+            return surface_->h;
         }
-        operator bool() const {
-            return valid_;
+};
+
+class WrapTexture {
+    private:
+        SDL_Texture *texture_;
+    public:
+        WrapTexture(SDL_Renderer *renderer, int w, int h);
+        WrapTexture(SDL_Renderer *renderer, SDL_Surface *surface);
+        ~WrapTexture();
+        SDL_Texture *texture() {
+            return texture_;
         }
-        std::vector<Rect> &region() {
-            return region_;
+        int width() const {
+            assert(texture_);
+            return texture_->w;
         }
-        void upconverted() {
-            is_upconverted_ = true;
-        }
-        bool isUpconverted() {
-            return is_upconverted_;
+        int height() const {
+            assert(texture_);
+            return texture_->h;
         }
 };
 

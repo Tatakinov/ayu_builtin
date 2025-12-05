@@ -3,6 +3,14 @@
 
 #include <vector>
 
+#if defined(_WIN32) || defined(WIN32)
+#define IS_WINDOWS 1
+#endif // WIN32
+
+#if defined(__linux__)
+#define IS_LINUX 1
+#endif // Linux
+
 enum class BindFlag {
     True, False, Toggle,
 };

@@ -1,15 +1,23 @@
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include <SDL3/SDL_main.h>
+
 #include "ayu_.h"
 #include "logger.h"
-#include "program.h"
-#include "vertex.h"
 
 int main(int argc, char **argv) {
+    Logger::configure("out.dump");
+    SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, "io.github.tatakinov.ninix-kagari.ayu_builtin");
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        return 1;
+    }
+    atexit(SDL_Quit);
+
     Ayu ayu;
 
 #if defined(DEBUG)

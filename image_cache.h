@@ -20,7 +20,7 @@ class ImageInfo {
     public:
         ImageInfo(const std::vector<unsigned char> &data, int width, int height, bool is_upconverted) : data_(data), width_(width), height_(height), is_upconverted_(is_upconverted) {}
         ~ImageInfo() {}
-        const std::vector<unsigned char> &get() const {
+        std::vector<unsigned char> &get() {
             return data_;
         }
         int width() const {
@@ -50,7 +50,7 @@ class ImageCache {
         Ort::Session session_;
 #endif // USE_ONNX
 
-        const std::optional<ImageInfo> &getOriginal(const std::filesystem::path &path);
+        std::optional<ImageInfo> &getOriginal(const std::filesystem::path &path);
 
     public:
 #if defined(USE_ONNX)
@@ -61,7 +61,7 @@ class ImageCache {
 #endif // USE_ONNX
         ~ImageCache();
         void setScale(int scale);
-        const std::optional<ImageInfo> &get(const std::filesystem::path &path);
+        std::optional<ImageInfo> &get(const std::filesystem::path &path);
         void clearCache();
 };
 

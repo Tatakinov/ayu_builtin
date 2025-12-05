@@ -2,6 +2,7 @@
 #define SURFACE_H_
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -9,6 +10,9 @@
 #include <vector>
 
 #include "misc.h"
+#include "texture.h"
+
+class ImageCache;
 
 struct Element {
     Method method;
@@ -18,6 +22,7 @@ struct Element {
         const auto &lhs = *this;
         return lhs.method == rhs.method && lhs.x == rhs.x && lhs.y == rhs.y && lhs.filename == rhs.filename;
     }
+    std::unique_ptr<WrapTexture> getTexture(SDL_Renderer *renderer, std::unique_ptr<ImageCache> &cache) const;
 };
 
 template<>

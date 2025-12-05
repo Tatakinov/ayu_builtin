@@ -15,11 +15,6 @@
 #include <unordered_set>
 #include <vector>
 
-#if defined(USE_WAYLAND)
-#include <wayland-client.h>
-#include "xdg-output-client-protocol.h"
-#endif // USE_WAYLAND
-
 #include "character.h"
 #include "image_cache.h"
 #include "misc.h"
@@ -41,17 +36,18 @@ class Ayu {
         std::filesystem::path ayu_dir_;
         std::unordered_map<std::string, std::string> info_;
         std::unordered_map<int, std::unordered_map<std::string, int>> bind_id_;
+        std::unordered_map<int, std::unique_ptr<Character>> characters_;
         std::unique_ptr<Surfaces> surfaces_;
-        std::unordered_map<CursorType, GLFWcursor *> cursors_;
         std::unique_ptr<ImageCache> cache_;
         std::string path_;
         std::string uuid_;
         bool alive_;
         int scale_;
         bool loaded_;
+        bool redrawn_;
 
     public:
-        Ayu() : alive_(true), scale_(100), loaded_(false) {
+        Ayu() : alive_(true), scale_(100), loaded_(false), redrawn_(false) {
             init();
 #if defined(DEBUG)
             ayu_dir_ = "./shell/master";
@@ -65,11 +61,6 @@ class Ayu {
         void load();
 
         std::string getInfo(std::string key, bool fallback);
-
-#if defined(USE_WAYLAND)
-        wl_compositor *getCompositor();
-        zxdg_output_manager_v1 *getManager();
-#endif
 
         void create(int side);
 
@@ -102,13 +93,9 @@ class Ayu {
 
         void draw();
 
-        GLFWcursor *getCursor(CursorType type);
-
         std::string sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args);
 
         void enqueueDirectSSTP(std::vector<Request> list);
-
-        std::unique_ptr<Seriko> getSeriko() const;
 };
 
 #endif // GL_AYU_H_

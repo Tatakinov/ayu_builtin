@@ -1,5 +1,6 @@
 #include "actor.h"
 
+#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <unordered_set>

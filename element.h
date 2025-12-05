@@ -1,9 +1,16 @@
 #ifndef ELEMENT_H_
 #define ELEMENT_H_
 
+#include <memory>
 #include <variant>
 
 #include "surface.h"
+#include "texture.h"
+
+struct Element;
+struct ElementWithChildren;
+
+using RenderInfo = std::variant<Element, ElementWithChildren>;
 
 struct ElementWithChildren {
     Method method;
@@ -40,9 +47,8 @@ struct ElementWithChildren {
         }
         return true;
     }
+    std::unique_ptr<WrapTexture> getTexture(SDL_Renderer *renderer, std::unique_ptr<ImageCache> &cache) const;
 };
-
-using RenderInfo = std::variant<Element, ElementWithChildren>;
 
 template<>
 struct std::hash<std::vector<RenderInfo>> {

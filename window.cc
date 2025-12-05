@@ -1,180 +1,74 @@
 #include "window.h"
 
-#include <glm/gtc/matrix_transform.hpp>
-
-#if defined(_WIN32) || defined(WIN32)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef max
-#undef min
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_NATIVE_INCLUDE_NONE
-#include <GLFW/glfw3native.h>
-#endif // Windows
-
-#if defined(USE_WAYLAND)
-#define GLFW_EXPOSE_NATIVE_WAYLAND
-#define GLFW_NATIVE_INCLUDE_NONE
-#include <GLFW/glfw3native.h>
-#endif // USE_WAYLAND
-
-#if defined(USE_X11)
-#define GLFW_EXPOSE_NATIVE_X11
-#define GLFW_NATIVE_INCLUDE_NONE
-#include <GLFW/glfw3native.h>
-#endif // USE_X11
+#include <cassert>
+#include <cmath>
 
 #include "character.h"
 #include "logger.h"
 #include "sstp.h"
 
-namespace {
-    glm::mat4 view = glm::lookAt(
-            glm::vec3(0, 0, 1),
-            glm::vec3(0, 0, 0),
-            glm::vec3(0, 1, 0)
-            );
-}
-
-Window::Window(Character *parent, GLFWmonitor *monitor)
+Window::Window(Character *parent, SDL_DisplayID id)
     : window_(nullptr), size_({0, 0}),
     position_({0, 0}), parent_(parent),
-    cache_(std::make_unique<TextureCache>()), adjust_(false),
-    counter_(0), offset_({0, 0}) {
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    //glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
-    //assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHintString(GLFW_WAYLAND_APP_ID, "io.github.tatakinov.ayu_builtin");
-    glfwWindowHintString(GLFW_X11_CLASS_NAME, "io.github.tatakinov.ayu_builtin");
-
-    auto *mode = glfwGetVideoMode(monitor);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwGetMonitorWorkarea(monitor, &monitor_rect_.x, &monitor_rect_.y, &monitor_rect_.width, &monitor_rect_.height);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-#if !defined(USE_WAYLAND)
-    glfwGetMonitorPos(monitor, &monitor_rect_.x, &monitor_rect_.y);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-#else
-    zxdg_output_v1 *output = zxdg_output_manager_v1_get_xdg_output(parent_->getManager(), glfwGetWaylandMonitor(monitor));
-    assert(output);
-    zxdg_output_v1_listener listener = {
-        [](void *data, zxdg_output_v1 *o, int32_t x, int32_t y) {
-            Window *w = static_cast<Window *>(data);
-            w->setPosition(x, y);
-        },
-        [](void *data, zxdg_output_v1 *o, int32_t width, int32_t height) {
-        },
-        [](void *data, zxdg_output_v1 *o) {
-        },
-        [](void *data, zxdg_output_v1 *o, const char *name) {
-        },
-        [](void *data, zxdg_output_v1 *o, const char *description) {
+    adjust_(false),
+    counter_(0), offset_({0, 0}), renderer_(nullptr) {
+    if (util::isWayland()) {
+        SDL_Rect r;
+        SDL_GetDisplayBounds(id, &r);
+        monitor_rect_ = { r.x, r.y, r.w, r.h };
+    }
+    else {
+        monitor_rect_ = { 0, 0, 1, 1 };
+    }
+    if (util::isWayland()) {
+        SDL_PropertiesID p = SDL_CreateProperties();
+        assert(p);
+        SDL_SetStringProperty(p, SDL_PROP_WINDOW_CREATE_TITLE_STRING, parent_->name().c_str());
+        SDL_SetBooleanProperty(p, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
+        SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_UNDEFINED_DISPLAY(id));
+        SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_UNDEFINED_DISPLAY(id));
+        SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, monitor_rect_.width);
+        SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, monitor_rect_.height);
+        window_ = SDL_CreateWindowWithProperties(p);
+    }
+#if 0
+    else if (util::isWayland()) {
+        int w = 0, h = 0;
+        if (w == 0 || h == 0) {
+            w = h = 200;
         }
-    };
-    wl_display *display = glfwGetWaylandDisplay();
-    zxdg_output_v1_add_listener(output, &listener, this);
-    wl_callback *callback = wl_display_sync(display);
-    wl_callback_listener callback_listener = {
-        [](void *data, wl_callback *c, uint32_t time) {
-            Window *w = static_cast<Window *>(data);
-            w->decrement();
-        }
-    };
-    increment();
-    wl_callback_add_listener(callback, &callback_listener, this);
-    while (wl_display_dispatch(display) != -1 && counter_ > 0) {}
-    zxdg_output_v1_destroy(output);
+        window_ = SDL_CreateWindow(parent_->name().c_str(), w, h, SDL_WINDOW_TRANSPARENT);
+        //SDL_MaximizeWindow(window_);
+        SDL_SyncWindow(window_);
+        SDL_GetWindowSize(window_, &w, &h);
+        monitor_rect_ = { 0, 0, w, h };
+    }
 #endif
-    if (util::isWayland() && util::isCompatibleRendering()) {
-        window_ = glfwCreateWindow(mode->width, mode->height, parent_->name().c_str(), monitor, nullptr);
-    }
     else {
-        window_ = glfwCreateWindow(200, 200, parent_->name().c_str(), nullptr, nullptr);
+        window_ = SDL_CreateWindow(parent_->name().c_str(), 200, 200, SDL_WINDOW_TRANSPARENT);
     }
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-
-    glfwMakeContextCurrent(window_);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-
-    assert(gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)));
-    program_ = std::make_unique<Program>();
-
-    glfwSwapInterval(1);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-
-    glfwSetWindowUserPointer(window_, this);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-
-    glfwSetWindowSizeCallback(window_, resizeCallback);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwSetWindowPosCallback(window_, positionCallback);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwSetWindowFocusCallback(window_, focusCallback);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwSetMouseButtonCallback(window_, mouseButtonCallback);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwSetCursorPosCallback(window_, cursorPositionCallback);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwSetKeyCallback(window_, keyCallback);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-
-    glEnable(GL_BLEND);
-
-    if (util::isWayland() && !util::isCompatibleRendering()) {
-        glfwMaximizeWindow(window_);
-    }
-    else {
-        resizeCallback(window_, mode->width, mode->height);
-    }
+    renderer_ = SDL_CreateRenderer(window_, NULL);
 }
 
 Window::~Window() {
     if (window_ != nullptr) {
-        glfwMakeContextCurrent(window_);
-        assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-        cache_.reset();
-        program_.reset();
-        glfwMakeContextCurrent(nullptr);
-        assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-        glfwDestroyWindow(window_);
-        assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+        SDL_DestroyRenderer(renderer_);
+        SDL_DestroyWindow(window_);
     }
 }
 
 void Window::resize(int width, int height) {
-    int w, h;
-    glfwGetFramebufferSize(window_, &w, &h);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glViewport(0, 0, w, h);
-    assert(glGetError() == GL_NO_ERROR);
     std::unique_lock<std::mutex> lock(mutex_);
     size_ = {width, height};
 }
 
 void Window::focus(int focused) {
-    focused_ = (focused == GLFW_TRUE);
+    //focused_ = (focused == GLFW_TRUE);
 }
 
 void Window::position(int x, int y) {
     if (!util::isWayland()) {
-        glfwSetWindowPos(window_, x, y);
+        SDL_SetWindowPosition(window_, x, y);
     }
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -183,6 +77,7 @@ void Window::position(int x, int y) {
 }
 
 void Window::mouseButton(int button, int action, int mods) {
+#if 0
     mouse_state_[button].press = (action == GLFW_PRESS);
     if (button == GLFW_MOUSE_BUTTON_LEFT && !mouse_state_[button].press) {
         parent_->resetDrag();
@@ -245,12 +140,16 @@ void Window::mouseButton(int button, int action, int mods) {
             v.drag = false;
         }
     }
+#if 0
     if (action == GLFW_RELEASE) {
         parent_->sendDirectSSTP("EXECUTE", "RaiseBalloon", {util::to_s(parent_->side())});
     }
+#endif
+#endif
 }
 
 void Window::cursorPosition(double x, double y) {
+#if 0
     if (!parent_->drag().has_value()) {
         int xi = x, yi = y;
         if (util::isWayland()) {
@@ -267,7 +166,7 @@ void Window::cursorPosition(double x, double y) {
         }
     }
     if (!parent_->drag().has_value() && mouse_state_[GLFW_MOUSE_BUTTON_LEFT].press) {
-        if (util::isWayland() && util::isCompatibleRendering()) {
+        if (util::isWayland() && util::isEnableMultiMonitor()) {
             parent_->setDrag(cursor_position_.x + monitor_rect_.x, cursor_position_.y + monitor_rect_.y);
         }
         else {
@@ -277,7 +176,7 @@ void Window::cursorPosition(double x, double y) {
     cursor_position_ = {x, y};
     if (parent_->drag().has_value()) {
         auto [dx, dy, px, py] = parent_->drag().value();
-        if (util::isWayland() && util::isCompatibleRendering()) {
+        if (util::isWayland() && util::isEnableMultiMonitor()) {
             x = x + monitor_rect_.x;
             y = y + monitor_rect_.y;
         }
@@ -288,10 +187,7 @@ void Window::cursorPosition(double x, double y) {
             v.drag = true;
         }
     }
-}
-
-void Window::key(int key, int scancode, int action, int mods) {
-    // TODO stub
+#endif
 }
 
 void dump(const std::vector<RenderInfo> &infos) {
@@ -303,19 +199,49 @@ void dump(const std::vector<RenderInfo> &infos) {
     }
 }
 
-bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const std::vector<RenderInfo> &list, const bool use_self_alpha) {
-    if (size_.x == 0 || size_.y == 0) {
-        return false;
+bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const ElementWithChildren &element, const bool use_self_alpha) {
+    auto texture = element.getTexture(renderer_, image_cache);
+    SDL_SetRenderTarget(renderer_, nullptr);
+    SDL_SetRenderDrawColor(renderer_, 0x00, 0x00, 0x00, 0x00);
+    SDL_RenderClear(renderer_);
+    if (texture) {
+        auto m = getMonitorRect();
+        while (adjust_) {
+            int side = parent_->side();
+            int origin_x = m.x + m.width;
+            if (side > 0) {
+                auto o = parent_->getCharacterOffset(side - 1);
+                if (!o) {
+                    return false;
+                }
+                if (o->x < origin_x) {
+                    origin_x = o->x;
+                }
+            }
+            origin_x -= texture->width();
+            if (origin_x < m.x) {
+                origin_x = m.x;
+            }
+            int origin_y = m.y + m.height;
+            origin_y -= texture->height();
+            parent_->setOffset(origin_x, origin_y);
+            offset = {origin_x, origin_y};
+
+            adjust_ = false;
+        }
+        if (!util::isWayland()) {
+            SDL_SetWindowSize(window_, texture->width(), texture->height());
+        }
+        parent_->setSize(texture->width(), texture->height());
+
+        SDL_BlendMode mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+        SDL_SetRenderDrawBlendMode(renderer_, mode);
+        SDL_FRect r = { offset.x - m.x, offset.y - m.y, texture->width(), texture->height() };
+        SDL_RenderTexture(renderer_, texture->texture(), nullptr, &r);
     }
+#if 0
     bool regenerate = false;
-    glfwMakeContextCurrent(window_);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    cache_->clearCache(false);
     std::unique_ptr<Texture> &texture = cache_->get(image_cache, list, program_, use_self_alpha);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    assert(glGetError() == GL_NO_ERROR);
-    glClear(GL_COLOR_BUFFER_BIT);
-    assert(glGetError() == GL_NO_ERROR);
     if (*texture) {
         auto [x, y, w, h] = texture->rect();
         auto r = getMonitorRect();
@@ -343,129 +269,35 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
             adjust_ = false;
         }
         if (!util::isWayland()) {
-            glfwSetWindowSize(window_, x + w, y + h);
+            SDL_SetWindowSize(window_, x + w, y + h);
         }
         parent_->setSize(x + w, y + h);
-        // OpenGLは左下が原点なのでyは上下逆にする
-        if (util::isWayland()) {
-            glViewport(offset.x - r.x + x, r.height - (offset.y - r.y + y + h), w, h);
-        }
-        else {
-            glViewport(x, size_.y - (y + h), w, h);
-        }
-        assert(glGetError() == GL_NO_ERROR);
-        program_->use(view);
-        program_->set(texture->id());
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        assert(glGetError() == GL_NO_ERROR);
     }
     else {
         parent_->setSize(0, 0);
     }
-#if defined(_WIN32) || defined(WIN32)
-    if (*texture) {
-        if (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset)) {
-            HWND window = glfwGetWin32Window(window_);
-            offset_ = offset;
-            region_ = texture->region();
-            std::vector<POINT> points;
-            std::vector<int> counts;
-            int num = 0;
-            for (auto &r : region_.value()) {
-                // 矩形内部が有効な領域になるので矩形を1まわり大きくする
-                int x = offset.x - monitor_rect_.x + r.x;
-                int y = offset.y - monitor_rect_.y + r.y;
-                points.push_back({x - 1, y - 1});
-                points.push_back({x - 1, y + r.height + 1});
-                points.push_back({x + r.width + 1, y + r.height + 1});
-                points.push_back({x + r.width + 1, y - 1});
-                counts.push_back(4);
-                num += 1;
-            }
-            HRGN region = CreatePolyPolygonRgn(&points[0], &counts[0], num, WINDING);
-            SetWindowRgn(window, region, TRUE);
-        }
-    }
-    else {
-        if (!region_ || region_.value().size() > 0) {
-            region_ = std::make_optional<std::vector<Rect>>();
-            HWND window = glfwGetWin32Window(window_);
-            HRGN region = CreateRectRgn(0, 0, 1, 1);
-            SetWindowRgn(window, region, TRUE);
-        }
-    }
-#endif // Windows
-#if defined(USE_WAYLAND)
     if (*texture) {
         if (!parent_->isInDragging() && (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset))) {
             offset_ = offset;
             region_ = texture->region();
-            wl_surface *surface = glfwGetWaylandWindow(window_);
-            wl_compositor *compositor = parent_->getCompositor();
-            wl_region *region = wl_compositor_create_region(compositor);
-            //auto [_x, _y, _w, h] = texture->rect();
-            for (auto &r : texture->region()) {
-                // wl_regionは左上が原点
-                if (util::isWayland() && util::isCompatibleRendering()) {
-                    wl_region_add(region, offset.x - monitor_rect_.x + r.x, offset.y - monitor_rect_.y + r.y, r.width, r.height);
-                }
-                else {
-                    wl_region_add(region, offset.x + r.x, offset.y + r.y, r.width, r.height);
-                }
-            }
-            wl_surface_set_input_region(surface, region);
-            wl_region_destroy(region);
-            Logger::log("update region.");
+            SDL_SetWindowShape();
         }
     }
     else {
         if (!region_ || region_.value().size() > 0) {
             region_ = std::make_optional<std::vector<Rect>>();
-            wl_surface *surface = glfwGetWaylandWindow(window_);
-            wl_compositor *compositor = parent_->getCompositor();
-            wl_region *region = wl_compositor_create_region(compositor);
-            wl_surface_set_input_region(surface, region);
-            wl_region_destroy(region);
+            SDL_SetWindowShape();
         }
     }
-#endif // USE_WAYLAND
-#if defined(USE_X11)
-    if (*texture) {
-        if (!parent_->isInDragging() && (!region_ || !(region_.value() == texture->region()) || !(offset_ == offset))) {
-            offset_ = offset;
-            region_ = texture->region();
-            Display *display = glfwGetX11Display();
-            Window window = glfwGetX11Window(window_);
-            std::vector<XRectangle> rect;
-            rect.reserve(texture->region().size());
-            for (auto &r : texture->region()) {
-                rect.push_back({r.x, r.y, r.width, r.height});
-            }
-            XShapeCombineRectangles(display, window, ShapeBounding, 0, 0, rect.data(), rect.size(), ShapeSet, Unsorted);
-        }
-    }
-    else {
-        if (!region_ || region_.value().size() > 0) {
-            region_ = std::make_optional<std::vector<Rect>>();
-            Display *display = glfwGetX11Display();
-            Window window = glfwGetX11Window(window_);
-            XShapeCombineRectangles(display, window, ShapeBounding, 0, 0, nullptr, 0, ShapeSet, Unsorted);
-        }
-    }
-#endif // USE_X11
-    glfwMakeContextCurrent(nullptr);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
     return texture->isUpconverted();
+#else
+    return true;
+#endif
 }
 
 void Window::swapBuffers() {
-    glfwMakeContextCurrent(window_);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwSwapBuffers(window_);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwMakeContextCurrent(nullptr);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    SDL_SetRenderTarget(renderer_, nullptr);
+    SDL_RenderPresent(renderer_);
 }
 
 double Window::distance(int x, int y) const {
@@ -503,15 +335,5 @@ double Window::distance(int x, int y) const {
     return d;
 }
 
-void Window::setCursor(GLFWcursor *cursor) {
-    glfwSetCursor(window_, cursor);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-}
-
 void Window::clearCache() {
-    glfwMakeContextCurrent(window_);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    cache_->clearCache();
-    glfwMakeContextCurrent(nullptr);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 }

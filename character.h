@@ -1,17 +1,14 @@
 #ifndef CHARACTER_H_
 #define CHARACTER_H_
 
-#include "glad/glad.h"
-#include <GLFW/glfw3.h>
 #include <memory>
 #include <optional>
+#include <vector>
 
-#if defined(USE_WAYLAND)
-#include <wayland-client.h>
-#include "xdg-output-client-protocol.h"
-#endif // USE_WAYLAND
+#include <SDL3/SDL_video.h>
 
 #include "ayu_.h"
+#include "element.h"
 #include "image_cache.h"
 #include "misc.h"
 #include "seriko.h"
@@ -26,7 +23,7 @@ class Character {
         int side_;
         std::string name_;
         std::unique_ptr<Seriko> seriko_;
-        std::unordered_map<GLFWmonitor *, std::unique_ptr<Window>> windows_;
+        std::unordered_map<SDL_DisplayID, std::unique_ptr<Window>> windows_;
         Rect rect_;
         Offset balloon_offset_;
         bool balloon_direction_;
@@ -36,15 +33,15 @@ class Character {
         bool reset_balloon_position_;
         CursorType current_cursor_type_;
         std::mutex mutex_;
-        std::optional<std::vector<RenderInfo>> prev_;
+        std::optional<ElementWithChildren> prev_;
         bool position_changed_;
         bool upconverted_;
     public:
         Character(Ayu *parent, int side, const std::string &name, std::unique_ptr<Seriko> seriko);
         ~Character();
-        void create(GLFWmonitor *monitor);
-        void destroy(GLFWmonitor *monitor);
-        void draw(std::unique_ptr<ImageCache> &cache, bool changed);
+        void create(SDL_DisplayID display_id);
+        void destroy(SDL_DisplayID display_id);
+        bool draw(std::unique_ptr<ImageCache> &cache, bool changed);
         int side() const {
             return side_;
         }
@@ -98,10 +95,6 @@ class Character {
         std::string getHitBoxName(int x, int y);
         void setCursor(CursorType type);
         std::unordered_set<int> getBindAddId(int id);
-#if defined(USE_WAYLAND)
-        wl_compositor *getCompositor();
-        zxdg_output_manager_v1 *getManager();
-#endif // USE_WAYLAND
 };
 
 #endif // CHARACTER_H_

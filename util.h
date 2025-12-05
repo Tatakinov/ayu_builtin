@@ -26,7 +26,7 @@ namespace util {
     std::string side2str(int side);
 
     bool isWayland();
-    bool isCompatibleRendering();
+    bool isEnableMultiMonitor();
 }
 
 #endif // UTIL_H_

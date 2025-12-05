@@ -41,7 +41,7 @@ namespace util {
         return (wayland == getenv("XDG_SESSION_TYPE"));
     }
 
-    bool isCompatibleRendering() {
+    bool isEnableMultiMonitor() {
         return !!getenv("NINIX_ENABLE_MULTI_MONITOR");
     }
 }

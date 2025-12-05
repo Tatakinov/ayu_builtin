@@ -1,5 +1,7 @@
 #include "character.h"
 
+#include <cassert>
+
 #include "sstp.h"
 #include "util.h"
 
@@ -16,17 +18,17 @@ Character::Character(Ayu *parent, int side, const std::string &name, std::unique
 Character::~Character() {
 }
 
-void Character::create(GLFWmonitor *monitor) {
-    windows_.try_emplace(monitor, std::make_unique<Window>(this, monitor));
+void Character::create(SDL_DisplayID id) {
+    windows_.try_emplace(id, std::make_unique<Window>(this, id));
 }
 
-void Character::destroy(GLFWmonitor *monitor) {
-    if (windows_.contains(monitor)) {
-        windows_.erase(monitor);
+void Character::destroy(SDL_DisplayID id) {
+    if (windows_.contains(id)) {
+        windows_.erase(id);
     }
 }
 
-void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
+bool Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
     bool use_self_alpha = (parent_->getInfo("seriko.use_self_alpha", false) == "1");
     auto list = seriko_->get(id_);
     if (changed) {
@@ -49,7 +51,9 @@ void Character::draw(std::unique_ptr<ImageCache> &cache, bool changed) {
         for (auto &[_, v] : windows_) {
             v->swapBuffers();
         }
+        return true;
     }
+    return false;
 }
 
 void Character::show(bool force) {
@@ -73,7 +77,7 @@ void Character::setSurface(int id) {
 }
 
 void Character::requestAdjust() {
-    GLFWmonitor *key = nullptr;
+    SDL_DisplayID key = 0;
     {
         double distance = -1;
         for (auto &[k, v] : windows_) {
@@ -125,7 +129,7 @@ void Character::resetBalloonPosition() {
         ox += v.ox - v.x;
         oy += v.oy - v.y;
     }
-    GLFWmonitor *key = nullptr;
+    SDL_DisplayID key = 0;
     {
         double distance = -1;
         for (auto &[k, v] : windows_) {
@@ -248,7 +252,7 @@ void Character::resetDrag() {
         align = f(value);
     }
 
-    GLFWmonitor *key = nullptr;
+    SDL_DisplayID key = 0;
     {
         double distance = -1;
         for (auto &[k, v] : windows_) {
@@ -258,6 +262,9 @@ void Character::resetDrag() {
                 key = k;
             }
         }
+    }
+    if (!windows_.contains(key)) {
+        return;
     }
     Rect monitor_rect = windows_[key]->getMonitorRect();
     switch (align) {
@@ -288,7 +295,7 @@ void Character::setOffset(int x, int y) {
             rect_.x = x;
             rect_.y = y;
         }
-        GLFWmonitor *key = nullptr;
+        SDL_DisplayID key = 0;
         {
             double distance = -1;
             for (auto &[k, v] : windows_) {
@@ -298,6 +305,9 @@ void Character::setOffset(int x, int y) {
                     key = k;
                 }
             }
+        }
+        if (!windows_.contains(key)) {
+            return;
         }
         Rect monitor_rect = windows_[key]->getMonitorRect();
         std::vector<std::string> args = {util::to_s(side_), util::to_s(monitor_rect.x), util::to_s(monitor_rect.y), util::to_s(monitor_rect.width), util::to_s(monitor_rect.height)};
@@ -359,6 +369,7 @@ std::unordered_set<int> Character::getBindAddId(int id) {
 std::string Character::getHitBoxName(int x, int y) {
     x -= rect_.x;
     y -= rect_.y;
+    // TODO scale
     auto list = seriko_->getCollision(id_);
     for (auto &info : list) {
         for (auto &c : info.list) {
@@ -468,19 +479,5 @@ std::string Character::getHitBoxName(int x, int y) {
 void Character::setCursor(CursorType type) {
     if (current_cursor_type_ != type) {
         current_cursor_type_ = type;
-        auto cursor = parent_->getCursor(type);
-        for (auto &[_, window] : windows_) {
-            window->setCursor(cursor);
-        }
     }
 }
-
-#if defined(USE_WAYLAND)
-wl_compositor *Character::getCompositor() {
-    return parent_->getCompositor();
-}
-
-zxdg_output_manager_v1 *Character::getManager() {
-    return parent_->getManager();
-}
-#endif // USE_WAYLAND

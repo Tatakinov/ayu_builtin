@@ -66,15 +66,15 @@ void Seriko::inactivate(int id) {
     actor.inactivate();
 }
 
-std::vector<RenderInfo> Seriko::get(int id) {
+ElementWithChildren Seriko::get(int id) {
     if (!surfaces_.contains(id)) {
-        return {};
+        return {Method::Overlay, 0, 0, {}};
     }
-    std::vector<RenderInfo> ret;
+    ElementWithChildren ret = {Method::Overlay, 0, 0, {}};
     if (current_id_ != id) {
         current_id_ = id;
         if (!surfaces_.contains(id)) {
-            return {};
+            return {Method::Overlay, 0, 0, {}};
         }
         auto &surface = surfaces_.at(id);
         actors_.clear();
@@ -91,22 +91,22 @@ std::vector<RenderInfo> Seriko::get(int id) {
     auto &surface = surfaces_.at(id);
     std::vector<int> list;
     list.reserve(std::max(surface.element.size(), actors_.size()));
-    ret.reserve(surface.element.size());
+    ret.children.reserve(surface.element.size());
     // TODO background
     for (auto &[k, _] : surface.element) {
         list.emplace_back(k);
     }
     std::sort(list.begin(), list.end());
     for (auto i : list) {
-        ret.emplace_back(surface.element[i]);
+        ret.children.emplace_back(surface.element[i]);
     }
     list.clear();
-    int allocate = ret.size();
+    int allocate = ret.children.size();
     for (auto &[k, v] : actors_) {
         list.emplace_back(k);
         allocate += v.patterns().size();
     }
-    ret.reserve(allocate);
+    ret.children.reserve(allocate);
     std::sort(list.begin(), list.end());
     std::unordered_set<int> done = {id};
     for (auto i : list) {
@@ -117,7 +117,7 @@ std::vector<RenderInfo> Seriko::get(int id) {
                 auto ps = actor.patterns();
                 for (auto &p : ps) {
                     ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, done) };
-                    ret.emplace_back(e);
+                    ret.children.emplace_back(e);
                 }
             }
         }
@@ -130,7 +130,7 @@ std::vector<RenderInfo> Seriko::get(int id) {
 #else
         auto p = actor.currentPattern();
         ElementWithChildren e = { p.method, p.x, p.y, getElements(p.id, done) };
-        ret.emplace_back(e);
+        ret.children.emplace_back(e);
 #endif
     }
     return ret;
@@ -271,6 +271,7 @@ void Seriko::updateBind() {
     for (auto &[k, _] : actors_) {
         if (!binds_.contains(k)) {
             binds_[k] = parent_->isBinding(k);
+            assert(binds_.contains(k));
             bind(k, binds_.at(k));
         }
     }

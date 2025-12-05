@@ -111,7 +111,7 @@ void ImageCache::setScale(int scale) {
     cache_.clear();
 }
 
-const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::path &path) {
+std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::path &path) {
     Logger::log("scale => ", scale_);
     if (cache_orig_.contains(path)) {
         return cache_orig_.at(path);
@@ -238,14 +238,14 @@ const std::optional<ImageInfo> &ImageCache::getOriginal(const std::filesystem::p
     return cache_orig_.at(path);
 }
 
-const std::optional<ImageInfo> &ImageCache::get(const std::filesystem::path &path) {
+std::optional<ImageInfo> &ImageCache::get(const std::filesystem::path &path) {
     {
         std::unique_lock<std::mutex> lock(mutex_);
         if (cache_.contains(path)) {
             return cache_.at(path);
         }
     }
-    const auto &info = getOriginal(path);
+    auto &info = getOriginal(path);
     if (info == std::nullopt || scale_ == 100) {
         cache_[path] = info;
         return cache_.at(path);

@@ -5,14 +5,9 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include "glad/glad.h"
-#include <GLFW/glfw3.h>
 
-#if defined(USE_WAYLAND)
-#define GLFW_EXPOSE_NATIVE_WAYLAND
-#define GLFW_NATIVE_INCLUDE_NONE
-#include <GLFW/glfw3native.h>
-#endif // USE_WAYLAND
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
 
 #if defined(_WIN32) || defined(WIN32)
 #include <fcntl.h>
@@ -37,20 +32,11 @@
 #include "window.h"
 
 namespace {
-    std::unordered_map<int, std::unique_ptr<Character>> characters;
-
-    void errorCallback(int code, const char *message) {
-        Logger::log("Error(", code, "): ", message);
-    }
-#if !defined(_WIN32) && !defined(WIN32)
+#ifndef IS_WINDOWS
     inline int closesocket(int fd) {
         return close(fd);
     }
 #endif
-#if defined(USE_WAYLAND)
-    wl_compositor *compositor = nullptr;
-    zxdg_output_manager_v1 *manager = nullptr;
-#endif // USE_WAYLAND
 }
 
 Ayu::~Ayu() {
@@ -58,70 +44,21 @@ Ayu::~Ayu() {
         std::unique_lock<std::mutex> lock(mutex_);
         alive_ = false;
     }
-#if defined(USE_WAYLAND)
-    if (compositor) {
-    }
-    if (manager) {
-    }
-#endif // USE_WAYLAND
     th_send_->join();
     th_recv_->join();
-    characters.clear();
-    glfwTerminate();
-#if defined(_WIN32) || defined(WIN32)
+    characters_.clear();
+#ifdef IS_WINDOWS
     WSACleanup();
 #endif // Windows
 }
 
 bool Ayu::init() {
-#if defined(_WIN32) || defined(WIN32)
+#ifdef IS_WINDOWS
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
     _setmode(_fileno(stdin), _O_BINARY);
     _setmode(_fileno(stdout), _O_BINARY);
 #endif // Windows
-
-    glfwSetErrorCallback(errorCallback);
-    assert(glfwInit() != GLFW_FALSE);
-
-    glfwSetMonitorCallback([](auto *monitor, int event) {
-        if (event == GLFW_CONNECTED) {
-            for (auto &[_, v] : characters) {
-                v->create(monitor);
-            }
-        }
-        else if (event == GLFW_DISCONNECTED) {
-            for (auto &[_, v] : characters) {
-                v->destroy(monitor);
-            }
-        }
-    });
-
-#if defined(USE_WAYLAND)
-    wl_display *display = glfwGetWaylandDisplay();
-    const wl_registry_listener listener = {
-        [](void *data, wl_registry *reg, uint32_t id, const char *interface, uint32_t version) {
-            std::string s = interface;
-            if (s == "wl_compositor") {
-                compositor = static_cast<wl_compositor *>(wl_registry_bind(reg, id, &wl_compositor_interface, 1));
-            }
-            if (s == "zxdg_output_manager_v1") {
-                manager = static_cast<zxdg_output_manager_v1 *>(wl_registry_bind(reg, id, &zxdg_output_manager_v1_interface, 1));
-            }
-        },
-        [](void *data, wl_registry *reg, uint32_t id) {
-        },
-    };
-    wl_registry *r = wl_display_get_registry(display);
-    wl_registry_add_listener(r, &listener, nullptr);
-    wl_display_roundtrip(display);
-    assert(compositor);
-#endif // USE_WAYLAND
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
 
     th_recv_ = std::make_unique<std::thread>([&]() {
         uint32_t len;
@@ -334,11 +271,11 @@ bool Ayu::init() {
 
     std::string exe_path;
     exe_path.resize(1024);
-#if defined(_WIN32) || defined(WIN32)
+#ifdef IS_WINDOWS
     GetModuleFileName(NULL, exe_path.data(), 1024);
 #else
     readlink("/proc/self/exe", exe_path.data(), 1024);
-#endif
+#endif // OS
     std::filesystem::path exe_dir = exe_path;
     exe_dir = exe_dir.parent_path();
     bool use_self_alpha = (getInfo("seriko.use_self_alpha", false) == "1");
@@ -373,15 +310,6 @@ bool Ayu::init() {
     return true;
 }
 
-#if defined(USE_WAYLAND)
-wl_compositor *Ayu::getCompositor() {
-    return compositor;
-}
-zxdg_output_manager_v1 *Ayu::getManager() {
-    return manager;
-}
-#endif // USE_WAYLAND
-
 std::string Ayu::getInfo(std::string key, bool fallback) {
     if (info_.contains(key)) {
         return info_.at(key);
@@ -400,77 +328,88 @@ std::string Ayu::getInfo(std::string key, bool fallback) {
 
 
 void Ayu::create(int side) {
-    if (characters.contains(side)) {
+    if (characters_.contains(side)) {
         return;
     }
     auto s = util::side2str(side);
     auto name = getInfo(s + ".name", true);
-    characters.try_emplace(side, std::make_unique<Character>(this, side, name.c_str(), surfaces_->getSeriko()));
+    characters_.emplace(side, std::make_unique<Character>(this, side, name.c_str(), surfaces_->getSeriko()));
     // TODO dynamic
-    int count = 0;
-    auto **monitors = glfwGetMonitors(&count);
-    for (int i = 0; i < count; i++) {
-        characters.at(side)->create(monitors[i]);
-        if (!util::isWayland() || !util::isCompatibleRendering()) {
-            break;
+    if (util::isWayland()) {
+        int count = 0;
+        auto *monitors = SDL_GetDisplays(&count);
+        for (int i = 0; i < count; i++) {
+            characters_.at(side)->create(monitors[i]);
         }
+        SDL_free(monitors);
+    }
+    else {
+        characters_.at(side)->create(0);
     }
     return;
 }
 
 void Ayu::show(int side) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return;
     }
-    characters.at(side)->show();
+    characters_.at(side)->show();
 }
 
 void Ayu::hide(int side) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return;
     }
-    characters.at(side)->hide();
+    characters_.at(side)->hide();
 }
 
 void Ayu::setSurface(int side, int id) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return;
     }
-    characters.at(side)->setSurface(id);
+    characters_.at(side)->setSurface(id);
 }
 
 void Ayu::startAnimation(int side, int id) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return;
     }
-    characters.at(side)->startAnimation(id);
+    characters_.at(side)->startAnimation(id);
 }
 
 bool Ayu::isPlayingAnimation(int side, int id) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return false;
     }
-    return characters.at(side)->isPlayingAnimation(id);
+    return characters_.at(side)->isPlayingAnimation(id);
 }
 
 void Ayu::bind(int side, int id, std::string from, BindFlag flag) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return;
     }
-    characters.at(side)->bind(id, from, flag);
+    characters_.at(side)->bind(id, from, flag);
 }
 
 void Ayu::clearCache() {
     cache_->clearCache();
-    for (auto &[_, v] : characters) {
+    for (auto &[_, v] : characters_) {
         v->clearCache();
     }
 }
 
 void Ayu::draw() {
-    //glfwPollEvents();
-    glfwWaitEventsTimeout(0.001); // 1ms
-    assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
+    SDL_Event event;
+    if (redrawn_) {
+        SDL_PollEvent(&event);
+    }
+    else {
+        SDL_WaitEventTimeout(&event, 1);
+    }
+    if (event.type == SDL_EVENT_QUIT) {
+        alive_ = false;
+        return;
+    }
     std::queue<std::vector<std::string>> queue;
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -510,24 +449,25 @@ void Ayu::draw() {
         }
     }
     std::vector<int> keys;
-    for (auto &[k, _] : characters) {
+    for (auto &[k, _] : characters_) {
         keys.push_back(k);
     }
     std::sort(keys.begin(), keys.end());
+    redrawn_ = false;
     for (auto k : keys) {
-        characters[k]->draw(cache_, changed);
+        redrawn_ = characters_.at(k)->draw(cache_, changed) || redrawn_;
     }
 }
 
 Rect Ayu::getRect(int side) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return {0, 0, 0, 0};
     }
-    return characters.at(side)->getRect();
+    return characters_.at(side)->getRect();
 }
 
 void Ayu::resetBalloonPosition() {
-    for (auto &[k, v] : characters) {
+    for (auto &[k, v] : characters_) {
         v->resetBalloonPosition();
     }
 }
@@ -536,50 +476,31 @@ std::optional<Offset> Ayu::getCharacterOffset(int side) {
     int s = side;
     std::optional<Offset> ret = std::nullopt;
     for (; s >= 0; s--) {
-        if (characters.contains(s)) {
+        if (characters_.contains(s)) {
             break;
         }
     }
     if (s == -1) {
         ret = {0, 0};
     }
-    else if (characters.at(s)->isAdjusted()) {
-        ret = characters.at(s)->getOffset();
+    else if (characters_.at(s)->isAdjusted()) {
+        ret = characters_.at(s)->getOffset();
     }
     return ret;
 }
 
 void Ayu::setBalloonOffset(int side, int x, int y) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return;
     }
-    return characters.at(side)->setBalloonOffset(x, y);
+    return characters_.at(side)->setBalloonOffset(x, y);
 }
 
 Offset Ayu::getBalloonOffset(int side) {
-    if (!characters.contains(side)) {
+    if (!characters_.contains(side)) {
         return {0, 0};
     }
-    return characters.at(side)->getBalloonOffset();
-}
-
-GLFWcursor *Ayu::getCursor(CursorType type) {
-    if (!cursors_.contains(type)) {
-        switch (type) {
-            case CursorType::Default:
-                cursors_.emplace(type, glfwCreateStandardCursor(GLFW_ARROW_CURSOR));
-                assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-                break;
-            case CursorType::Hand:
-                cursors_.emplace(type, glfwCreateStandardCursor(GLFW_HAND_CURSOR));
-                assert(glfwGetError(nullptr) == GLFW_NO_ERROR);
-                break;
-            default:
-                assert(false);
-                break;
-        }
-    }
-    return cursors_.at(type);
+    return characters_.at(side)->getBalloonOffset();
 }
 
 std::string Ayu::sendDirectSSTP(std::string method, std::string command, std::vector<std::string> args) {
@@ -644,8 +565,4 @@ void Ayu::enqueueDirectSSTP(std::vector<Request> list) {
         event_queue_.push(list);
     }
     cond_.notify_one();
-}
-
-std::unique_ptr<Seriko> Ayu::getSeriko() const {
-    return surfaces_->getSeriko();
 }
