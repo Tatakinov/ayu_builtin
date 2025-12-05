@@ -4,6 +4,10 @@
 
 #include "image_cache.h"
 
+WrapSurface::WrapSurface(int w, int h) {
+    surface_ = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_ARGB8888);
+}
+
 WrapSurface::WrapSurface(ImageInfo &info) {
     surface_ = SDL_CreateSurfaceFrom(info.width(), info.height(), SDL_PIXELFORMAT_ARGB8888, info.get().data(), info.width() * 4);
 }

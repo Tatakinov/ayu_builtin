@@ -47,7 +47,9 @@ struct ElementWithChildren {
         }
         return true;
     }
+    std::unique_ptr<WrapSurface> getSurface(std::unique_ptr<ImageCache> &cache) const;
     std::unique_ptr<WrapTexture> getTexture(SDL_Renderer *renderer, std::unique_ptr<ImageCache> &cache) const;
+
 };
 
 template<>

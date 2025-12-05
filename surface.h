@@ -22,6 +22,7 @@ struct Element {
         const auto &lhs = *this;
         return lhs.method == rhs.method && lhs.x == rhs.x && lhs.y == rhs.y && lhs.filename == rhs.filename;
     }
+    std::unique_ptr<WrapSurface> getSurface(std::unique_ptr<ImageCache> &cache) const;
     std::unique_ptr<WrapTexture> getTexture(SDL_Renderer *renderer, std::unique_ptr<ImageCache> &cache) const;
 };
 

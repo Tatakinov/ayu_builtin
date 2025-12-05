@@ -200,12 +200,13 @@ void dump(const std::vector<RenderInfo> &infos) {
 }
 
 bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const ElementWithChildren &element, const bool use_self_alpha) {
-    auto texture = element.getTexture(renderer_, image_cache);
+    auto surface = element.getSurface(image_cache);
     SDL_SetRenderTarget(renderer_, nullptr);
     SDL_SetRenderDrawColor(renderer_, 0x00, 0x00, 0x00, 0x00);
     SDL_RenderClear(renderer_);
-    if (texture) {
-        auto m = getMonitorRect();
+    auto m = getMonitorRect();
+    if (surface) {
+        auto texture = std::make_unique<WrapTexture>(renderer_, surface->surface());
         while (adjust_) {
             int side = parent_->side();
             int origin_x = m.x + m.width;
@@ -238,6 +239,35 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
         SDL_SetRenderDrawBlendMode(renderer_, mode);
         SDL_FRect r = { offset.x - m.x, offset.y - m.y, texture->width(), texture->height() };
         SDL_RenderTexture(renderer_, texture->texture(), nullptr, &r);
+
+        std::vector<int> shape;
+        {
+            SDL_LockSurface(surface->surface());
+            for (int i = 0; i < surface->width() * surface->height(); i++) {
+                unsigned char *p = static_cast<unsigned char *>(surface->surface()->pixels);
+                if (p[4 * i + 3]) {
+                    shape.push_back(i);
+                }
+            }
+            SDL_UnlockSurface(surface->surface());
+        }
+        if (!parent_->isInDragging() && (shape_ != shape || !(offset_ == offset))) {
+            auto s = std::make_unique<WrapSurface>(m.width, m.height);
+            SDL_ClearSurface(s->surface(), 0, 0, 0, 0);
+            SDL_Rect r = { offset.x - m.x, offset.y - m.y, surface->width(), surface->height() };
+            SDL_BlitSurface(surface->surface(), nullptr, s->surface(), &r);
+            offset_ = offset;
+            SDL_SetWindowShape(window_, s->surface());
+            shape_ = shape;
+        }
+    }
+    else {
+        if (shape_.size() > 0) {
+            shape_ = {};
+            auto s = std::make_unique<WrapSurface>(m.width, m.height);
+            SDL_ClearSurface(s->surface(), 0, 0, 0, 0);
+            SDL_SetWindowShape(window_, s->surface());
+        }
     }
 #if 0
     bool regenerate = false;

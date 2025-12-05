@@ -12,6 +12,7 @@ class WrapSurface {
     private:
         SDL_Surface *surface_;
     public:
+        WrapSurface(int w, int h);
         WrapSurface(ImageInfo &info);
         ~WrapSurface();
         SDL_Surface *surface() {

@@ -53,3 +53,50 @@ std::unique_ptr<WrapTexture> Element::getTexture(SDL_Renderer *renderer, std::un
     SDL_RenderTexture(renderer, src->texture(), nullptr, &r);
     return dst;
 }
+
+std::unique_ptr<WrapSurface> Element::getSurface(std::unique_ptr<ImageCache> &cache) const {
+    auto &info = cache->get(filename);
+    if (!info) {
+        Logger::log("invalid info");
+        std::unique_ptr<WrapSurface> invalid;
+        return invalid;
+    }
+    WrapSurface src(info.value());
+    auto dst = std::make_unique<WrapSurface>(x + src.width(), y + src.height());
+    SDL_BlendMode mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+    switch (method) {
+        case Method::Base:
+        case Method::Add:
+        case Method::Overlay:
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+        case Method::OverlayFast:
+            mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_DST_ALPHA, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+        case Method::OverlayMultiply:
+            // FIXME
+            mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ZERO, SDL_BLENDFACTOR_SRC_COLOR, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+        case Method::Replace:
+            mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDFACTOR_ZERO, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+        case Method::Interpolate:
+            mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE_MINUS_DST_ALPHA, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+        case Method::Reduce:
+            // FIXME
+            mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ZERO, SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ZERO, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+        default:
+            SDL_SetSurfaceBlendMode(dst->surface(), mode);
+            break;
+    }
+    SDL_Rect r = { x, y, src.width(), src.height() };
+    SDL_BlitSurface(src.surface(), nullptr, dst->surface(), &r);
+    return dst;
+}

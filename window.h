@@ -41,7 +41,7 @@ class Window {
         bool adjust_;
         int counter_;
         Offset offset_;
-        std::optional<std::vector<Rect>> region_;
+        std::vector<int> shape_;
         SDL_Renderer *renderer_;
 
     public:
