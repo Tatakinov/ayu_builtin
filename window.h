@@ -34,7 +34,7 @@ class Window {
         Position<int> size_;
         Position<int> position_;
         bool focused_;
-        std::unordered_map<int, State> mouse_state_;
+        std::unordered_map<Uint8, State> mouse_state_;
         Position<double> cursor_position_;
         Character *parent_;
         Rect monitor_rect_;
@@ -97,6 +97,11 @@ class Window {
         double distance(int x, int y) const;
 
         void clearCache();
+
+        void key(const SDL_KeyboardEvent &event);
+        void motion(const SDL_MouseMotionEvent &event);
+        void button(const SDL_MouseButtonEvent &event);
+        void wheel(const SDL_MouseWheelEvent &event);
 };
 
 #endif // WINDOW_H_

@@ -2,10 +2,57 @@
 
 #include <cassert>
 #include <cmath>
+#include <string>
+#include <unordered_map>
 
 #include "character.h"
 #include "logger.h"
+#include "misc.h"
 #include "sstp.h"
+
+#define KEY2S(key) { SDLK_ ## key, #key }
+namespace {
+    std::unordered_map<SDL_Keycode, int> key_count;
+    std::unordered_map<SDL_Keycode, std::string> key2s = {
+        KEY2S(0),
+        KEY2S(1),
+        KEY2S(2),
+        KEY2S(3),
+        KEY2S(4),
+        KEY2S(5),
+        KEY2S(6),
+        KEY2S(7),
+        KEY2S(8),
+        KEY2S(9),
+        KEY2S(A),
+        KEY2S(B),
+        KEY2S(C),
+        KEY2S(D),
+        KEY2S(E),
+        KEY2S(F),
+        KEY2S(G),
+        KEY2S(H),
+        KEY2S(I),
+        KEY2S(J),
+        KEY2S(K),
+        KEY2S(L),
+        KEY2S(M),
+        KEY2S(N),
+        KEY2S(O),
+        KEY2S(P),
+        KEY2S(Q),
+        KEY2S(R),
+        KEY2S(S),
+        KEY2S(T),
+        KEY2S(U),
+        KEY2S(V),
+        KEY2S(W),
+        KEY2S(X),
+        KEY2S(Y),
+        KEY2S(Z),
+    };
+}
+#undef KEY2S
 
 Window::Window(Character *parent, SDL_DisplayID id)
     : window_(nullptr), size_({0, 0}),
@@ -366,4 +413,169 @@ double Window::distance(int x, int y) const {
 }
 
 void Window::clearCache() {
+}
+
+void Window::key(const SDL_KeyboardEvent &event) {
+    if (event.windowID != SDL_GetWindowID(window_)) {
+        return;
+    }
+    // TODO stub
+    std::vector<std::string> args = { key2s[event.key], util::to_s(event.key) };
+    Request req = {"NOTIFY", "OnKeyPress", args};
+    parent_->enqueueDirectSSTP({req});
+}
+
+void Window::motion(const SDL_MouseMotionEvent &event) {
+    if (event.windowID != SDL_GetWindowID(window_)) {
+        return;
+    }
+    if (!parent_->drag().has_value()) {
+        int xi = event.x, yi = event.y;
+        if (util::isWayland()) {
+            auto r = getMonitorRect();
+            xi = xi + r.x;
+            yi = yi + r.y;
+        }
+        auto name = parent_->getHitBoxName(xi, yi);
+        if (name.empty()) {
+            SDL_Cursor *cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+            SDL_SetCursor(cursor);
+        }
+        else {
+            SDL_Cursor *cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+            SDL_SetCursor(cursor);
+        }
+    }
+    if (!parent_->drag().has_value() && mouse_state_[0].press) {
+        if (util::isWayland() && util::isEnableMultiMonitor()) {
+            parent_->setDrag(cursor_position_.x + monitor_rect_.x, cursor_position_.y + monitor_rect_.y);
+        }
+        else {
+            parent_->setDrag(cursor_position_.x, cursor_position_.y);
+        }
+    }
+    cursor_position_ = {event.x, event.y};
+    if (parent_->drag().has_value()) {
+        auto [dx, dy, px, py] = parent_->drag().value();
+        auto x = event.x;
+        auto y = event.y;
+        if (util::isWayland() && util::isEnableMultiMonitor()) {
+            x = x + monitor_rect_.x;
+            y = y + monitor_rect_.y;
+        }
+        parent_->setOffset(px + x - dx, py + y - dy);
+    }
+    for (auto &[k, v] : mouse_state_) {
+        if (v.press) {
+            v.drag = true;
+        }
+    }
+}
+
+void Window::button(const SDL_MouseButtonEvent &event) {
+    if (event.windowID != SDL_GetWindowID(window_)) {
+        return;
+    }
+    mouse_state_[event.button].press = event.down;
+    if (event.button == 0 && !mouse_state_[event.button].press) {
+        parent_->resetDrag();
+    }
+    if (!mouse_state_[event.button].press && !mouse_state_[event.button].drag) {
+        int x = cursor_position_.x;
+        int y = cursor_position_.y;
+        int b = -1;
+        switch (event.button) {
+            case 1:
+                b = 0;
+                break;
+            case 2:
+                b = 2;
+                break;
+            case 3:
+                b = 1;
+                break;
+            default:
+                break;
+        }
+
+        if (util::isWayland()) {
+            auto r = getMonitorRect();
+            x = x + r.x;
+            y = y + r.y;
+        }
+        auto name = parent_->getHitBoxName(x, y);
+
+        std::vector<std::string> args;
+        Offset offset = parent_->getOffset();
+        x = x - offset.x;
+        y = y - offset.y;
+        args = {util::to_s(x), util::to_s(y), util::to_s(0), util::to_s(parent_->side()), name, util::to_s(b)};
+
+        if (event.clicks % 2 == 0) {
+            Request req = {"NOTIFY", "OnMouseDoubleClick", args};
+            parent_->enqueueDirectSSTP({req});
+        }
+        else if (b != 1) {
+            Request up = {"NOTIFY", "OnMouseUp", args};
+            Request click = {"NOTIFY", "OnMouseClick", args};
+            parent_->enqueueDirectSSTP({up, click});
+        }
+        else {
+            Request up = {"NOTIFY", "OnMouseUp", args};
+            Request click = {"NOTIFY", "OnMouseClick", args};
+#if 0
+            // 右クリックメニューを呼び出す
+            args = {util::to_s(parent_->side()), util::to_s(x), util::to_s(y)};
+            Request menu = {"EXECUTE", "OpenMenu", args};
+            parent_->enqueueDirectSSTP({up, click, menu});
+#else
+            parent_->enqueueDirectSSTP({up, click});
+#endif
+        }
+    }
+    else if (event.down) {
+        int x = cursor_position_.x;
+        int y = cursor_position_.y;
+        int b = -1;
+        switch (event.button) {
+            case 1:
+                b = 0;
+                break;
+            case 2:
+                b = 2;
+                break;
+            case 3:
+                b = 1;
+                break;
+            default:
+                break;
+        }
+
+        if (util::isWayland()) {
+            auto r = getMonitorRect();
+            x = x + r.x;
+            y = y + r.y;
+        }
+        auto name = parent_->getHitBoxName(x, y);
+
+        std::vector<std::string> args;
+        Offset offset = parent_->getOffset();
+        x = x - offset.x;
+        y = y - offset.y;
+        args = {util::to_s(x), util::to_s(y), util::to_s(0), util::to_s(parent_->side()), name, util::to_s(b)};
+        Request req = {"NOTIFY", "OnMouseDown", args};
+        parent_->enqueueDirectSSTP({req});
+    }
+    for (auto &[k, v] : mouse_state_) {
+        if (!v.press) {
+            v.drag = false;
+        }
+    }
+}
+
+void Window::wheel(const SDL_MouseWheelEvent &event) {
+    if (event.windowID != SDL_GetWindowID(window_)) {
+        return;
+    }
+    // TODO stub
 }

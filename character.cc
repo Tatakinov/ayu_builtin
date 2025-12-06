@@ -481,3 +481,27 @@ void Character::setCursor(CursorType type) {
         current_cursor_type_ = type;
     }
 }
+
+void Character::key(const SDL_KeyboardEvent &event) {
+    for (auto &[_, v] : windows_) {
+        v->key(event);
+    }
+}
+
+void Character::motion(const SDL_MouseMotionEvent &event) {
+    for (auto &[_, v] : windows_) {
+        v->motion(event);
+    }
+}
+
+void Character::button(const SDL_MouseButtonEvent &event) {
+    for (auto &[_, v] : windows_) {
+        v->button(event);
+    }
+}
+
+void Character::wheel(const SDL_MouseWheelEvent &event) {
+    for (auto &[_, v] : windows_) {
+        v->wheel(event);
+    }
+}

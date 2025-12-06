@@ -95,6 +95,10 @@ class Character {
         std::string getHitBoxName(int x, int y);
         void setCursor(CursorType type);
         std::unordered_set<int> getBindAddId(int id);
+        void key(const SDL_KeyboardEvent &event);
+        void motion(const SDL_MouseMotionEvent &event);
+        void button(const SDL_MouseButtonEvent &event);
+        void wheel(const SDL_MouseWheelEvent &event);
 };
 
 #endif // CHARACTER_H_

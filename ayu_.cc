@@ -400,15 +400,48 @@ void Ayu::clearCache() {
 
 void Ayu::draw() {
     SDL_Event event;
-    if (redrawn_) {
-        SDL_PollEvent(&event);
-    }
-    else {
-        SDL_WaitEventTimeout(&event, 1);
-    }
-    if (event.type == SDL_EVENT_QUIT) {
-        alive_ = false;
-        return;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_EVENT_QUIT:
+                alive_ = false;
+                return;
+            case SDL_EVENT_DISPLAY_ADDED:
+                for (auto &[_, v] : characters_) {
+                    v->create(event.display.displayID);
+                }
+                break;
+            case SDL_EVENT_DISPLAY_REMOVED:
+                for (auto &[_, v] : characters_) {
+                    v->destroy(event.display.displayID);
+                }
+                break;
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:
+                for (auto &[_, v] : characters_) {
+                    v->key(event.key);
+                }
+                break;
+            case SDL_EVENT_MOUSE_MOTION:
+                for (auto &[_, v] : characters_) {
+                    v->motion(event.motion);
+                }
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                for (auto &[_, v] : characters_) {
+                    v->button(event.button);
+                }
+                break;
+            case SDL_EVENT_MOUSE_WHEEL:
+                for (auto &[_, v] : characters_) {
+                    v->wheel(event.wheel);
+                }
+                break;
+            case SDL_EVENT_DROP_FILE:
+                break;
+            default:
+                break;
+        }
     }
     std::queue<std::vector<std::string>> queue;
     {
