@@ -97,7 +97,7 @@ Window::Window(Character *parent, SDL_DisplayID id)
     }
 #endif
     else {
-        window_ = SDL_CreateWindow(parent_->name().c_str(), 200, 200, SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS);
+        window_ = SDL_CreateWindow(parent_->name().c_str(), 200, 200, SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS | SDL_WINDOW_INPUT_FOCUS | SDL_WINDOW_MOUSE_FOCUS);
     }
     renderer_ = SDL_CreateRenderer(window_, NULL);
 }
