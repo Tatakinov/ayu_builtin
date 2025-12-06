@@ -5,11 +5,11 @@
 #include "image_cache.h"
 
 WrapSurface::WrapSurface(int w, int h) {
-    surface_ = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_ARGB8888);
+    surface_ = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_ABGR8888);
 }
 
 WrapSurface::WrapSurface(ImageInfo &info) {
-    surface_ = SDL_CreateSurfaceFrom(info.width(), info.height(), SDL_PIXELFORMAT_ARGB8888, info.get().data(), info.width() * 4);
+    surface_ = SDL_CreateSurfaceFrom(info.width(), info.height(), SDL_PIXELFORMAT_ABGR8888, info.get().data(), info.width() * 4);
 }
 
 WrapSurface::~WrapSurface() {
@@ -20,7 +20,7 @@ WrapSurface::~WrapSurface() {
 
 
 WrapTexture::WrapTexture(SDL_Renderer *renderer, int w, int h) {
-    texture_ = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, w, h);
+    texture_ = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, w, h);
 }
 
 WrapTexture::WrapTexture(SDL_Renderer *renderer, SDL_Surface *surface) {
