@@ -40,8 +40,4 @@ namespace util {
         std::string wayland = "wayland";
         return (wayland == getenv("XDG_SESSION_TYPE"));
     }
-
-    bool isEnableMultiMonitor() {
-        return !!getenv("NINIX_ENABLE_MULTI_MONITOR");
-    }
 }

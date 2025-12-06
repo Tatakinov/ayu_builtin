@@ -10,6 +10,10 @@
 #include "misc.h"
 #include "sstp.h"
 
+#define MOUSE_BUTTON_LEFT 1
+#define MOUSE_BUTTON_MIDDLE 2
+#define MOUSE_BUTTON_RIGHT 3
+
 #define KEY2S(key) { SDLK_ ## key, #key }
 namespace {
     std::unordered_map<SDL_Keycode, int> key_count;
@@ -298,9 +302,11 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
             }
             SDL_UnlockSurface(surface->surface());
         }
-        if (!parent_->isInDragging() && (shape_ != shape || !(offset_ == offset))) {
+        //if (!parent_->isInDragging() && (!shape_ || shape_ != shape || !(offset_ == offset))) {
+        if ((!shape_ || shape_ != shape || !(offset_ == offset))) {
             auto s = std::make_unique<WrapSurface>(m.width, m.height);
             SDL_ClearSurface(s->surface(), 0, 0, 0, 0);
+            Logger::log("surface.rect: ", surface->width(), ",", surface->height());
             SDL_Rect r = { offset.x - m.x, offset.y - m.y, surface->width(), surface->height() };
             SDL_BlitSurface(surface->surface(), nullptr, s->surface(), &r);
             offset_ = offset;
@@ -309,8 +315,8 @@ bool Window::draw(std::unique_ptr<ImageCache> &image_cache, Offset offset, const
         }
     }
     else {
-        if (shape_.size() > 0) {
-            shape_ = {};
+        if (!shape_ || shape_->size() > 0) {
+            shape_ = std::make_optional<std::vector<int>>();
             auto s = std::make_unique<WrapSurface>(m.width, m.height);
             SDL_ClearSurface(s->surface(), 0, 0, 0, 0);
             SDL_SetWindowShape(window_, s->surface());
@@ -446,8 +452,8 @@ void Window::motion(const SDL_MouseMotionEvent &event) {
             SDL_SetCursor(cursor);
         }
     }
-    if (!parent_->drag().has_value() && mouse_state_[0].press) {
-        if (util::isWayland() && util::isEnableMultiMonitor()) {
+    if (!parent_->drag().has_value() && mouse_state_[MOUSE_BUTTON_LEFT].press) {
+        if (util::isWayland()) {
             parent_->setDrag(cursor_position_.x + monitor_rect_.x, cursor_position_.y + monitor_rect_.y);
         }
         else {
@@ -459,7 +465,7 @@ void Window::motion(const SDL_MouseMotionEvent &event) {
         auto [dx, dy, px, py] = parent_->drag().value();
         auto x = event.x;
         auto y = event.y;
-        if (util::isWayland() && util::isEnableMultiMonitor()) {
+        if (util::isWayland()) {
             x = x + monitor_rect_.x;
             y = y + monitor_rect_.y;
         }
@@ -477,7 +483,7 @@ void Window::button(const SDL_MouseButtonEvent &event) {
         return;
     }
     mouse_state_[event.button].press = event.down;
-    if (event.button == 0 && !mouse_state_[event.button].press) {
+    if (event.button == MOUSE_BUTTON_LEFT && !mouse_state_[event.button].press) {
         parent_->resetDrag();
     }
     if (!mouse_state_[event.button].press && !mouse_state_[event.button].drag) {
@@ -515,7 +521,7 @@ void Window::button(const SDL_MouseButtonEvent &event) {
             Request req = {"NOTIFY", "OnMouseDoubleClick", args};
             parent_->enqueueDirectSSTP({req});
         }
-        else if (b != 1) {
+        else if (event.button != MOUSE_BUTTON_RIGHT) {
             Request up = {"NOTIFY", "OnMouseUp", args};
             Request click = {"NOTIFY", "OnMouseClick", args};
             parent_->enqueueDirectSSTP({up, click});
