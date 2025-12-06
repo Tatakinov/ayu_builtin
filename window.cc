@@ -76,6 +76,7 @@ Window::Window(Character *parent, SDL_DisplayID id)
         assert(p);
         SDL_SetStringProperty(p, SDL_PROP_WINDOW_CREATE_TITLE_STRING, parent_->name().c_str());
         SDL_SetBooleanProperty(p, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
+        SDL_SetBooleanProperty(p, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
         SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_UNDEFINED_DISPLAY(id));
         SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_UNDEFINED_DISPLAY(id));
         SDL_SetNumberProperty(p, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, monitor_rect_.width);
@@ -96,7 +97,7 @@ Window::Window(Character *parent, SDL_DisplayID id)
     }
 #endif
     else {
-        window_ = SDL_CreateWindow(parent_->name().c_str(), 200, 200, SDL_WINDOW_TRANSPARENT);
+        window_ = SDL_CreateWindow(parent_->name().c_str(), 200, 200, SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS);
     }
     renderer_ = SDL_CreateRenderer(window_, NULL);
 }
